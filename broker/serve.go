@@ -1,10 +1,11 @@
 package broker
 
 import (
-	"github.com/teamsaas/meq/common/security"
+	"fmt"
+
 	"github.com/teamsaas/meq/broker/subscription"
 	"github.com/teamsaas/meq/common/channel"
-	"fmt"
+	"github.com/teamsaas/meq/common/security"
 )
 
 func (c *Conn) onSubscribe(mqttTopic []byte) error {
@@ -33,7 +34,7 @@ func (c *Conn) onUnsubscribe(mqttTopic []byte) *EventError {
 	return nil
 }
 
-func (c *Conn) onPublish(mqttTopic []byte, payload []byte) *EventError  {
+func (c *Conn) onPublish(mqttTopic []byte, payload []byte) *EventError {
 	// Parse the channel
 	ch := channel.ParsePublishChannel(mqttTopic)
 	if e, key := verifiedKey(ch); e == nil {
