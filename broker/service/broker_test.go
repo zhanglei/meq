@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-func TestPubAndSub(t *testing.T) {
+func TestPubAndSubOnline(t *testing.T) {
 	// start the two nodes in cluster
 	// first node
 	go testServer("8901", "00:00:00:00:00:01", "8911", "", "localhost:8921")
@@ -13,6 +13,10 @@ func TestPubAndSub(t *testing.T) {
 
 	// give some starup time to the two nodes
 	time.Sleep(2 * time.Second)
+
+	// sub to the second node
+
+	// pub to the first node
 
 }
 
