@@ -6,14 +6,6 @@ import (
 	"github.com/chaingod/talent"
 )
 
-type TopicProp struct {
-	Topic                    []byte
-	PushMsgWhenSub           bool
-	GetMsgFromOldestToNewest bool
-	AckStrategy              int8
-	GetMsgStrategy           int8
-}
-
 const (
 	TopicSep      = '/'
 	TopicWildcard = '+'

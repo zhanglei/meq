@@ -6,7 +6,7 @@ import (
 	"net"
 	"time"
 
-	"github.com/jadechat/go-meq"
+	meq "github.com/jadechat/meq/go-meq"
 	"github.com/jadechat/meq/proto"
 )
 

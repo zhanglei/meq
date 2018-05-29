@@ -86,7 +86,7 @@ func TestTimerMsgPackUnpack(t *testing.T) {
 }
 
 func TestSubAckPackUnpack(t *testing.T) {
-	tp := TopicProp{[]byte("test"), true, true, 1, 1}
+	tp := []byte("test")
 	packed := PackSubAck(tp)
 	unpacked := UnpackSubAck(packed[5:])
 

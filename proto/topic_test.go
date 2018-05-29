@@ -34,7 +34,7 @@ func TestParseTopic(t *testing.T) {
 		nil,
 	}
 	for i, v := range input {
-		ids, _ := parseTopic(v, true)
+		ids, _ := ParseTopic(v, true)
 		assert.Equal(t, out[i], ids)
 	}
 }

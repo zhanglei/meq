@@ -5,7 +5,7 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/jadechat/go-meq"
+	meq "github.com/jadechat/meq/go-meq"
 	"github.com/jadechat/meq/proto"
 )
 
@@ -20,7 +20,7 @@ func pub(conns []*meq.Connection) {
 			n := 1
 			cache := make([]*proto.PubMsg, 0, 10000)
 			for {
-				if n > 100000 {
+				if n > 100 {
 					break
 				}
 				// 27
@@ -31,7 +31,7 @@ func pub(conns []*meq.Connection) {
 					Type:    1,
 					QoS:     1,
 				}
-				if len(cache) < 500 {
+				if len(cache) < 10 {
 					cache = append(cache, m)
 				} else {
 					cache = append(cache, m)

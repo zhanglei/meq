@@ -102,50 +102,19 @@ func UnpackSub(b []byte) ([]byte, []byte) {
 	return b[2 : 2+tl], b[2+tl:]
 }
 
-func PackSubAck(tp TopicProp) []byte {
-	tl := uint64(len(tp.Topic))
-	msg := make([]byte, 4+1+4+tl)
-	binary.PutUvarint(msg[:4], 1+4+tl)
+func PackSubAck(t []byte) []byte {
+	tl := uint64(len(t))
+	msg := make([]byte, 4+1+tl)
+	binary.PutUvarint(msg[:4], 1+tl)
 	msg[4] = MSG_SUBACK
 
-	pm := 0
-	if tp.PushMsgWhenSub {
-		pm = 1
-	}
-	binary.PutUvarint(msg[5:6], uint64(pm))
-
-	gm := 0
-	if tp.GetMsgFromOldestToNewest {
-		gm = 1
-	}
-	binary.PutUvarint(msg[6:7], uint64(gm))
-
-	binary.PutUvarint(msg[7:8], uint64(tp.AckStrategy))
-	binary.PutUvarint(msg[8:9], uint64(tp.GetMsgStrategy))
-
-	copy(msg[9:], tp.Topic)
+	copy(msg[5:], t)
 
 	return msg
 }
 
-func UnpackSubAck(b []byte) (tp TopicProp) {
-	pm, _ := binary.Uvarint(b[0:1])
-	if pm == 1 {
-		tp.PushMsgWhenSub = true
-	}
-	gm, _ := binary.Uvarint(b[1:2])
-	if gm == 1 {
-		tp.GetMsgFromOldestToNewest = true
-	}
-
-	as, _ := binary.Uvarint(b[2:3])
-	tp.AckStrategy = int8(as)
-
-	gs, _ := binary.Uvarint(b[3:4])
-	tp.GetMsgStrategy = int8(gs)
-
-	tp.Topic = b[4:]
-	return
+func UnpackSubAck(b []byte) []byte {
+	return b
 }
 
 func PackAck(acks []Ack, cmd byte) []byte {
