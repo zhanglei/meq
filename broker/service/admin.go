@@ -3,8 +3,8 @@ package service
 import (
 	"strconv"
 
+	"github.com/jadechat/meq/proto"
 	"github.com/labstack/echo"
-	"github.com/meqio/meq/proto"
 )
 
 type admin struct {

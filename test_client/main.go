@@ -6,8 +6,8 @@ import (
 	"net"
 	"time"
 
-	meq "github.com/meqio/go-meq"
-	"github.com/meqio/meq/proto"
+	"github.com/jadechat/go-meq"
+	"github.com/jadechat/meq/proto"
 )
 
 var topic = "/test/mp/1"

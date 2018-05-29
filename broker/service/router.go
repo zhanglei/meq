@@ -5,7 +5,7 @@ import (
 	"sync"
 
 	"github.com/golang/snappy"
-	"github.com/meqio/meq/proto"
+	"github.com/jadechat/meq/proto"
 	"github.com/weaveworks/mesh"
 	"go.uber.org/zap"
 )
