@@ -110,15 +110,7 @@ func (c *client) readLoop() error {
 			if (topic == nil) && (len(group) == 0) {
 				return errors.New("the sub topic is null")
 			}
-			//Check to see if the topic created.
 
-			prop, ok := c.bk.store.GetTopicProp(proto.GetTopicPrefix(topic))
-			if !ok {
-				L.Info("sub topic is not created", zap.ByteString("topic", topic), zap.Uint64("cid", c.cid))
-				return nil
-			}
-
-			// c.bk.store.Sub(topic, group, c.cid, c.bk.cluster.peer.name)
 			c.bk.subtrie.Subscribe(topic, group, c.cid, c.bk.cluster.peer.name)
 			submsg := SubMessage{CLUSTER_SUB, topic, group, c.cid}
 			c.bk.cluster.peer.send.GossipBroadcast(submsg)
@@ -126,7 +118,7 @@ func (c *client) readLoop() error {
 			c.subs[string(topic)] = group
 
 			// write back the suback
-			sa := proto.PackSubAck(prop)
+			sa := proto.PackSubAck(topic)
 			c.conn.SetWriteDeadline(time.Now().Add(WRITE_DEADLINE))
 			c.conn.Write(sa)
 
@@ -135,14 +127,6 @@ func (c *client) readLoop() error {
 			msg := proto.PackMsgCount(topic, count)
 			c.conn.SetWriteDeadline(time.Now().Add(WRITE_DEADLINE))
 			c.conn.Write(msg)
-
-			if prop.PushMsgWhenSub {
-				// push out the stored messages
-				msgs := c.bk.store.Get(topic, 0, proto.MSG_NEWEST_OFFSET, prop)
-				if len(msgs) > 0 {
-					c.msgSender <- msgs
-				}
-			}
 		case proto.MSG_UNSUB: // clients unsubscribe the specify topic
 			topic, group := proto.UnpackSub(buf[1:])
 			if topic == nil {
@@ -173,20 +157,13 @@ func (c *client) readLoop() error {
 				return fmt.Errorf("the pull count %d is larger than :%d or equal/smaller than 0", count, MAX_MESSAGE_PULL_COUNT)
 			}
 
-			//Check to see if the topic created and get the topic prop
-			prop, ok := c.bk.store.GetTopicProp(proto.GetTopicPrefix(topic))
-			if !ok {
-				L.Info("pull topic is not created", zap.ByteString("topic", topic), zap.Uint64("cid", c.cid))
-				return nil
-			}
-
 			// check the topic is already subed
-			_, ok = c.subs[string(topic)]
+			_, ok := c.subs[string(topic)]
 			if !ok {
 				return errors.New("pull messages without subscribe the topic:" + string(topic))
 			}
 
-			msgs := c.bk.store.Get(topic, count, offset, prop)
+			msgs := c.bk.store.Get(topic, count, offset)
 			c.msgSender <- msgs
 		case proto.MSG_PUB_TIMER, proto.MSG_PUB_RESTORE:
 			m := proto.UnpackTimerMsg(buf[1:])
