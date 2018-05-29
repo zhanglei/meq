@@ -1,6 +1,6 @@
 # MeQ  [mi:kju]
 
-A modern messaging platform for MQ、Message Push、IM、IoT etc.
+A modern messaging platform for Message Push、IM、IoT etc.
 
 Our goal is to be the best messaging platform in the world, like the iphone to others.It will have the easiest way for using, the extremely high performance, fitting for  diversity scenario, and the most beatiful interface for administrator ui.
 
@@ -16,7 +16,7 @@ Design Goals
 ------------
 - Extremly Performanced: Zero allocation、Low Latency
 - HA and Scale out
-- support Message Push 、MQ、IM、IoT scenario
+- support Message Push 、IM、IoT scenario
 - Topic fuzzing match
 - Message trace by **Opentracing**
 - Multi persistent engine supported
