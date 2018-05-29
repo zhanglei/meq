@@ -1,4 +1,4 @@
-# MeQ [mi:kju]
+# MeQ  [mi:kju]
 
 A modern messaging platform for MQ、Message Push、IM、IoT etc.
 
