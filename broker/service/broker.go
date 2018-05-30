@@ -34,14 +34,14 @@ type Broker struct {
 	sync.RWMutex
 }
 
-func NewBroker() *Broker {
+func NewBroker(path string) *Broker {
 	b := &Broker{
 		wg:      &sync.WaitGroup{},
 		clients: make(map[uint64]*client),
 		subtrie: NewSubTrie(),
 	}
 	// init base config
-	b.conf = initConfig()
+	b.conf = initConfig(path)
 	InitLogger(b.conf.Common.LogPath, b.conf.Common.LogLevel, b.conf.Common.IsDebug)
 	L.Info("base configuration loaded")
 
@@ -66,6 +66,10 @@ func (b *Broker) Start() {
 	switch b.conf.Store.Engine {
 	case "memory":
 		b.store = &MemStore{
+			bk: b,
+		}
+	case "fdb":
+		b.store = &FdbStore{
 			bk: b,
 		}
 	}

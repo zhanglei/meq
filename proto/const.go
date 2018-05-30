@@ -37,14 +37,3 @@ var (
 	DEFAULT_GROUP     = []byte("meq.io")
 	MSG_NEWEST_OFFSET = []byte("0")
 )
-
-const (
-	// third byte of topic on the ringt
-	TopicPropAckSet    = 1
-	TopicPropAckDel    = 2
-	TopicPropAckIgnore = 3
-
-	// fourth byte of topic on the right
-	TopicPropGetFilterAck = 1
-	TopicPropGetAll       = 2
-)

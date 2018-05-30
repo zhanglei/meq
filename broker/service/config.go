@@ -20,7 +20,8 @@ type Config struct {
 	}
 
 	Store struct {
-		Engine string
+		Engine    string
+		Namespace string
 	}
 
 	Cluster struct {
@@ -30,13 +31,14 @@ type Config struct {
 	}
 
 	Admin struct {
-		Addr string
+		Addr  string
+		Token string
 	}
 }
 
-func initConfig() *Config {
+func initConfig(path string) *Config {
 	conf := &Config{}
-	data, err := ioutil.ReadFile("broker.yaml")
+	data, err := ioutil.ReadFile(path)
 	if err != nil {
 		log.Fatal("read config error :", err)
 	}

@@ -71,6 +71,7 @@ func (c *cluster) Init() {
 	peer.register(gossip)
 	c.peer = peer
 
+	// if the memory  mode is using, we need to init nodes's synchronization for memory data
 	ms, ok := c.bk.store.(*MemStore)
 	if ok {
 		fmt.Println("init mem cluster-channel")

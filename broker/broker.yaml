@@ -6,17 +6,17 @@ common:
 
 broker:
   host: localhost
-  port: 8903
+  port: 8905
   
 store:
-  engine: memory
-
-
+  engine: fdb
+  namespace: meq-store
 cluster:
   hwaddr: "00:00:00:00:00:01"
-  port: "8913"
+  port: "8915"
   seedpeers: 
     - ""
 
 admin:
-  addr: "localhost:8923"
+  addr: "localhost:8925"
+  token: "meq-test"

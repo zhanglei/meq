@@ -3,7 +3,7 @@ package service
 import (
 	"testing"
 
-	"github.com/meqio/meq/proto"
+	"github.com/jadechat/meq/proto"
 	"github.com/stretchr/testify/assert"
 	"github.com/weaveworks/mesh"
 )

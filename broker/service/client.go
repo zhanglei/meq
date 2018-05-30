@@ -78,16 +78,17 @@ func (c *client) readLoop() error {
 		switch buf[0] {
 		case proto.MSG_CONNECT:
 
-		case proto.MSG_PUB: // clients publish  messages to a concrete topic
+		case proto.MSG_PUB:
+			// clients publish  messages to a concrete topic
+			// single publish will store the messages according to the message qos
 			ms, err := proto.UnpackPubMsgs(buf[1:])
 			if err != nil {
 				return err
 			}
-			//@todo
-			//Check to see if the topic prop exists.
 
 			// save the messages
 			c.bk.store.Put(ms)
+
 			// push to online clients in all nodes
 			pushOnline(c.cid, c.bk, ms, false)
 
@@ -99,7 +100,9 @@ func (c *client) readLoop() error {
 				}
 			}
 			c.ackSender <- acks
-		case proto.MSG_BROADCAST: // clients publish messges to a broadcast topic
+		case proto.MSG_BROADCAST:
+			// clients publish messges to a broadcast topic
+			// broadcast will not store the messages
 			ms, err := proto.UnpackPubMsgs(buf[1:])
 			if err != nil {
 				return err
