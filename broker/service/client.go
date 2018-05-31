@@ -149,6 +149,13 @@ func (c *client) readLoop() error {
 				// ack the messages
 				c.bk.store.ACK(acks)
 			}
+		case proto.MSG_PUBACK_COUNT:
+			topic, count := proto.UnpackAckCount(buf[1:])
+			if count < 0 && count != proto.ACK_ALL_COUNT {
+				return fmt.Errorf("malice ack count, topic:%s,count:%d", string(topic), count)
+			}
+			fmt.Println(string(topic), count)
+			c.bk.store.AckCount(topic, count)
 		case proto.MSG_PING: // receive client's 'ping', respond with 'pong'
 			msg := proto.PackPong()
 			c.conn.SetWriteDeadline(time.Now().Add(WRITE_DEADLINE))

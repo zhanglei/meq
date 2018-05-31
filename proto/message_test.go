@@ -93,6 +93,25 @@ func TestSubAckPackUnpack(t *testing.T) {
 	assert.Equal(t, tp, unpacked)
 }
 
+func TestPackAckCount(t *testing.T) {
+	topic := []byte("test")
+	count := MAX_PULL_COUNT
+
+	packed := PackAckCount(topic, count)
+	utopic, ucount := UnpackAckCount(packed[5:])
+
+	assert.Equal(t, topic, utopic)
+	assert.Equal(t, count, ucount)
+
+	count = -1
+
+	packed = PackAckCount(topic, count)
+	utopic, ucount = UnpackAckCount(packed[5:])
+
+	assert.Equal(t, topic, utopic)
+	assert.Equal(t, count, ucount)
+}
+
 func BenchmarkPubMsgPack(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()

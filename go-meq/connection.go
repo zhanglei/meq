@@ -88,7 +88,7 @@ func (c *Connection) loop(conf *ConfigOption) {
 		conn, err := net.Dial("tcp", host)
 		if err != nil {
 			c.logger.Debug("dial to server error", zap.String("host", host), zap.Error(err))
-			time.Sleep(100 * time.Millisecond)
+			time.Sleep(1000 * time.Millisecond)
 			continue
 		}
 
@@ -101,12 +101,12 @@ func (c *Connection) loop(conf *ConfigOption) {
 		if err != nil {
 			c.logger.Debug("read from server error", zap.String("host", host), zap.Error(err))
 			conn.Close()
-			time.Sleep(100 * time.Millisecond)
+			time.Sleep(1000 * time.Millisecond)
 			continue
 		}
 		if msg[4] != proto.MSG_CONNECT_OK {
 			conn.Close()
-			time.Sleep(100 * time.Millisecond)
+			time.Sleep(1000 * time.Millisecond)
 			continue
 		}
 

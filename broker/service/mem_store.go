@@ -148,6 +148,10 @@ func (ms *MemStore) ACK(acks []proto.Ack) {
 	}
 }
 
+func (ms *MemStore) AckCount(topic []byte, count int) {
+
+}
+
 func (ms *MemStore) Flush() {
 	temp := ms.cache
 	if len(temp) > 0 {

@@ -10,11 +10,12 @@ type Storage interface {
 	Init()
 	Close()
 
-	Put([]*proto.PubMsg)
-	ACK([]proto.Ack)
+	Put(msgs []*proto.PubMsg)
+	ACK(acks []proto.Ack)
+	AckCount(topic []byte, count int)
 
-	Get([]byte, int, []byte, bool) []*proto.PubMsg
-	GetCount([]byte) int
+	Get(topic []byte, count int, offset []byte, acked bool) []*proto.PubMsg
+	GetCount(topic []byte) int
 
 	PutTimerMsg(*proto.TimerMsg)
 	GetTimerMsg() []*proto.PubMsg

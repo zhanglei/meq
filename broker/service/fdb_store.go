@@ -24,8 +24,9 @@ type FdbStore struct {
 }
 
 type database struct {
-	db fdb.Database
-	sp subspace.Subspace
+	db      fdb.Database
+	msgsp   subspace.Subspace
+	countsp subspace.Subspace
 }
 
 const (
@@ -51,11 +52,13 @@ func (f *FdbStore) Close() {
 func (f *FdbStore) process(i int) {
 	fdb.MustAPIVersion(510)
 	db := fdb.MustOpenDefault()
-	sp, err := directory.CreateOrOpen(db, []string{f.bk.conf.Store.FDB.Namespace}, nil)
+	dir, err := directory.CreateOrOpen(db, []string{f.bk.conf.Store.FDB.Namespace}, nil)
 	if err != nil {
 		L.Fatal("init fdb(foundationDB) error", zap.Error(err))
 	}
-	f.dbs[i] = &database{db, sp}
+	msgsp := dir.Sub("messages")
+	countsp := dir.Sub("msg-count")
+	f.dbs[i] = &database{db, msgsp, countsp}
 
 	pubch := make(chan []*proto.PubMsg, FdbCacheInitLen)
 	ackch := make(chan []proto.Ack, FdbCacheInitLen)
@@ -70,23 +73,23 @@ func (f *FdbStore) process(i int) {
 		case msgs := <-pubch:
 			msgcache = append(msgcache, msgs...)
 			if len(msgcache) >= proto.CacheFlushLen {
-				put(db, sp, msgcache)
+				put(f.dbs[i], msgcache)
 				msgcache = msgcache[:0]
 			}
 		case acks := <-ackch:
 			ackcache = append(ackcache, acks...)
 			if len(ackcache) >= proto.CacheFlushLen {
-				ack(db, sp, ackcache)
+				ack(f.dbs[i], ackcache)
 				ackcache = ackcache[:0]
 			}
 		case <-time.NewTicker(1 * time.Second).C:
 			if len(msgcache) > 0 {
-				put(db, sp, msgcache)
+				put(f.dbs[i], msgcache)
 				msgcache = msgcache[:0]
 			}
 
 			if len(ackcache) > 0 {
-				ack(db, sp, ackcache)
+				ack(f.dbs[i], ackcache)
 				ackcache = ackcache[:0]
 			}
 
@@ -105,11 +108,14 @@ func (f *FdbStore) Put(msgs []*proto.PubMsg) {
 	putcounts++
 }
 
-func put(db fdb.Database, sp subspace.Subspace, msgs []*proto.PubMsg) {
-	_, err := db.Transact(func(tr fdb.Transaction) (ret interface{}, err error) {
+func put(d *database, msgs []*proto.PubMsg) {
+	_, err := d.db.Transact(func(tr fdb.Transaction) (ret interface{}, err error) {
 		for _, msg := range msgs {
-			key := sp.Pack(tuple.Tuple{msg.Topic, msg.ID})
+			key := d.msgsp.Pack(tuple.Tuple{msg.Topic, msg.ID})
 			tr.Set(key, PackStoreMessage(msg))
+
+			ck := d.countsp.Pack(tuple.Tuple{msg.Topic})
+			incrCount(d.db, ck, 1)
 		}
 		return
 	})
@@ -128,10 +134,10 @@ func (f *FdbStore) ACK(acks []proto.Ack) {
 	putcounts++
 }
 
-func ack(db fdb.Database, sp subspace.Subspace, acks []proto.Ack) {
-	_, err := db.Transact(func(tr fdb.Transaction) (ret interface{}, err error) {
+func ack(d *database, acks []proto.Ack) {
+	_, err := d.db.Transact(func(tr fdb.Transaction) (ret interface{}, err error) {
 		for _, ack := range acks {
-			key := sp.Pack(tuple.Tuple{ack.Topic, ack.Msgid})
+			key := d.msgsp.Pack(tuple.Tuple{ack.Topic, ack.Msgid})
 			b := tr.Get(key).MustGet()
 			// update msg acked to true(1)
 			// msgid
@@ -139,9 +145,10 @@ func ack(db fdb.Database, sp subspace.Subspace, acks []proto.Ack) {
 			// payload
 			pl, _ := binary.Uvarint(b[2+ml : 6+ml])
 			// update ack
-			b[6+ml+pl] = '1'
-
-			tr.Set(key, b)
+			if b[6+ml+pl] != '1' {
+				b[6+ml+pl] = '1'
+				tr.Set(key, b)
+			}
 		}
 		return
 	})
@@ -165,11 +172,11 @@ func (f *FdbStore) Get(t []byte, count int, offset []byte, acked bool) []*proto.
 	var msgs []*proto.PubMsg
 	_, err := d.db.Transact(func(tr fdb.Transaction) (ret interface{}, err error) {
 		pr, _ := fdb.PrefixRange(t)
-		pr.Begin = d.sp.Pack(tuple.Tuple{t, fdbStoreBegin})
+		pr.Begin = d.msgsp.Pack(tuple.Tuple{t, fdbStoreBegin})
 		if bytes.Compare(offset, proto.MSG_NEWEST_OFFSET) == 0 {
-			pr.End = d.sp.Pack(tuple.Tuple{t, fdbStoreEnd})
+			pr.End = d.msgsp.Pack(tuple.Tuple{t, fdbStoreEnd})
 		} else {
-			pr.End = d.sp.Pack(tuple.Tuple{t, offset})
+			pr.End = d.msgsp.Pack(tuple.Tuple{t, offset})
 		}
 
 		//@performance
@@ -190,8 +197,25 @@ func (f *FdbStore) Get(t []byte, count int, offset []byte, acked bool) []*proto.
 	return msgs
 }
 
-func (f *FdbStore) GetCount([]byte) int {
-	return 0
+func (f *FdbStore) GetCount(topic []byte) int {
+	i := getcounts % uint64(f.bk.conf.Store.FDB.Threads)
+	getcounts++
+
+	d := f.dbs[i]
+	ck := d.countsp.Pack(tuple.Tuple{topic})
+	count, _ := getCount(d.db, ck)
+	return int(count)
+}
+
+func (f *FdbStore) AckCount(topic []byte, count int) {
+	i := getcounts % uint64(f.bk.conf.Store.FDB.Threads)
+	getcounts++
+
+	d := f.dbs[i]
+
+	ck := d.countsp.Pack(tuple.Tuple{topic})
+
+	decrCount(d.db, ck, count)
 }
 
 func (f *FdbStore) PutTimerMsg(*proto.TimerMsg) {
@@ -200,4 +224,72 @@ func (f *FdbStore) PutTimerMsg(*proto.TimerMsg) {
 
 func (f *FdbStore) GetTimerMsg() []*proto.PubMsg {
 	return nil
+}
+
+func incrCount(tor fdb.Transactor, k fdb.Key, n int) error {
+	_, e := tor.Transact(func(tr fdb.Transaction) (interface{}, error) {
+		buf := new(bytes.Buffer)
+		err := binary.Write(buf, binary.LittleEndian, int64(n))
+		if err != nil {
+			return nil, err
+		}
+		one := buf.Bytes()
+		tr.Add(k, one)
+		return nil, nil
+	})
+	return e
+}
+
+func decrCount(tor fdb.Transactor, k fdb.Key, delta int) error {
+	_, e := tor.Transact(func(tr fdb.Transaction) (interface{}, error) {
+		if delta != proto.ACK_ALL_COUNT {
+			on, err := getCount(tor, k)
+			if err != nil {
+				return nil, err
+			}
+			if on-int64(delta) <= 0 {
+				goto SET_0
+			}
+			buf := new(bytes.Buffer)
+			err = binary.Write(buf, binary.LittleEndian, int64(-delta))
+			if err != nil {
+				return nil, err
+			}
+			negativeOne := buf.Bytes()
+			tr.Add(k, negativeOne)
+			return nil, nil
+		}
+
+	SET_0:
+		// ack all,set count to 0
+		buf := new(bytes.Buffer)
+		err := binary.Write(buf, binary.LittleEndian, int64(0))
+		if err != nil {
+			return nil, err
+		}
+		tr.Set(k, buf.Bytes())
+		return nil, nil
+	})
+
+	return e
+}
+
+func getCount(tor fdb.Transactor, k fdb.Key) (int64, error) {
+	val, e := tor.Transact(func(tr fdb.Transaction) (interface{}, error) {
+		return tr.Get(k).Get()
+	})
+	if e != nil {
+		return 0, e
+	}
+	if val == nil {
+		return 0, nil
+	}
+	byteVal := val.([]byte)
+	var numVal int64
+	readE := binary.Read(bytes.NewReader(byteVal), binary.LittleEndian, &numVal)
+	if readE != nil {
+		return 0, readE
+	} else {
+		return numVal, nil
+	}
 }

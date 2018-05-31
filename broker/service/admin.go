@@ -35,7 +35,8 @@ func (ad *admin) clearStore(c echo.Context) error {
 	d := f.dbs[i]
 
 	_, err := d.db.Transact(func(tr fdb.Transaction) (ret interface{}, err error) {
-		tr.ClearRange(d.sp)
+		tr.ClearRange(d.msgsp)
+		tr.ClearRange(d.countsp)
 		return
 	})
 	if err != nil {

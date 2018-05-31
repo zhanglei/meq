@@ -21,6 +21,8 @@ const (
 	MSG_CONNECT_OK = 'n'
 
 	MSG_BROADCAST = 'o'
+
+	MSG_PUBACK_COUNT = 'p'
 )
 
 const (
@@ -40,4 +42,6 @@ var (
 	MAX_PULL_COUNT = 100
 
 	CacheFlushLen = 100
+
+	ACK_ALL_COUNT = -1
 )

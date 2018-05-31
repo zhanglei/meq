@@ -23,6 +23,12 @@ func sub(conn *meq.Connection) {
 	if err != nil {
 		panic(err)
 	}
+
+	unread := conn.UnreadCount([]byte(topic))
+	fmt.Println("未读消息数量：", unread)
+
+	conn.AckCount([]byte(topic), proto.MAX_PULL_COUNT)
+
 	select {}
 
 	// fmt.Println("累积消费未ACK消息数：", n1)

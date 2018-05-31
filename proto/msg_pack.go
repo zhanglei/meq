@@ -378,3 +378,25 @@ func UnpackPubMsgs(m []byte) ([]*PubMsg, error) {
 
 	return msgs, nil
 }
+
+func PackAckCount(topic []byte, n int) []byte {
+	tl := uint64(len(topic))
+	m := make([]byte, 4+1+2+tl+2)
+	binary.PutUvarint(m[:4], 1+2+tl+2)
+	m[4] = MSG_PUBACK_COUNT
+
+	binary.PutUvarint(m[5:7], tl)
+	copy(m[7:7+tl], topic)
+
+	binary.PutVarint(m[7+tl:9+tl], int64(n))
+
+	return m
+}
+
+func UnpackAckCount(b []byte) ([]byte, int) {
+	tl, _ := binary.Uvarint(b[:2])
+	topic := b[2 : 2+tl]
+	count, _ := binary.Varint(b[2+tl : 4+tl])
+
+	return topic, int(count)
+}
