@@ -3,6 +3,7 @@ package service
 import (
 	"bytes"
 	"encoding/binary"
+	"fmt"
 	"sync"
 	"time"
 
@@ -101,11 +102,13 @@ var putcounts uint64 = 0
 
 // deliver to the fdb processor with robin strategy
 func (f *FdbStore) Put(msgs []*proto.PubMsg) {
+	fmt.Println("here11111")
 	// for lock free solution
 	i := putcounts % uint64(f.bk.conf.Store.FDB.Threads)
 	f.pubchs[i] <- msgs
 
 	putcounts++
+	fmt.Println("here2222")
 }
 
 func put(d *database, msgs []*proto.PubMsg) {
