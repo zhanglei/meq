@@ -114,8 +114,9 @@ func put(d *database, msgs []*proto.PubMsg) {
 			key := d.msgsp.Pack(tuple.Tuple{msg.Topic, msg.ID})
 			tr.Set(key, PackStoreMessage(msg))
 
-			ck := d.countsp.Pack(tuple.Tuple{msg.Topic})
-			incrCount(d.db, ck, 1)
+			// @performance
+			// ck := d.countsp.Pack(tuple.Tuple{msg.Topic})
+			// incrCount(d.db, ck, 1)
 		}
 		return
 	})
@@ -141,6 +142,9 @@ func ack(d *database, acks []proto.Ack) {
 			b := tr.Get(key).MustGet()
 			// update msg acked to true(1)
 			// msgid
+			if len(b) == 0 {
+				continue
+			}
 			ml, _ := binary.Uvarint(b[:2])
 			// payload
 			pl, _ := binary.Uvarint(b[2+ml : 6+ml])

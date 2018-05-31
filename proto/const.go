@@ -43,7 +43,7 @@ var (
 const (
 	MAX_PULL_COUNT = 100
 
-	CacheFlushLen = 100
+	CacheFlushLen = 200
 
 	ACK_ALL_COUNT = -1
 
