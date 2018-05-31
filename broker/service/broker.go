@@ -5,12 +5,14 @@ import (
 	"log"
 	"net"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"net/http"
 	_ "net/http/pprof"
 
 	"github.com/chaingod/talent"
+	"github.com/jadechat/meq/proto/websocket"
 	"go.uber.org/zap"
 )
 
@@ -49,15 +51,10 @@ func NewBroker(path string) *Broker {
 }
 
 func (b *Broker) Start() {
-
-	addr := net.JoinHostPort(b.conf.Broker.Host, b.conf.Broker.Port)
-	l, err := net.Listen("tcp", addr)
-	if err != nil {
-		L.Fatal("Fatal error when listening", zap.Error(err), zap.String("addr", addr))
-	}
-	b.listener = l
-
-	go b.Accept()
+	// tcp listener
+	b.startTcp()
+	// websocket listenser
+	b.startWS()
 
 	b.running = true
 	b.runningTime = time.Now()
@@ -118,9 +115,11 @@ func (b *Broker) Shutdown() {
 	b.wg.Wait()
 }
 
+var uid uint64
+
 func (b *Broker) Accept() {
 	tmpDelay := ACCEPT_MIN_SLEEP
-	var id uint64
+
 	for b.running {
 		conn, err := b.listener.Accept()
 		if err != nil {
@@ -137,8 +136,8 @@ func (b *Broker) Accept() {
 			continue
 		}
 		tmpDelay = ACCEPT_MIN_SLEEP
-		id++
-		go b.process(conn, id)
+		atomic.AddUint64(&uid, 1)
+		go b.process(conn, uid)
 	}
 }
 
@@ -175,4 +174,35 @@ func (b *Broker) process(conn net.Conn, id uint64) {
 			L.Info("client read loop error", zap.Error(err), zap.Uint64("cid", cli.cid))
 		}
 	}
+}
+
+func (b *Broker) startTcp() {
+	addr := net.JoinHostPort(b.conf.Broker.Host, b.conf.Broker.TcpPort)
+	l, err := net.Listen("tcp", addr)
+	if err != nil {
+		L.Fatal("Fatal error when listening tcp", zap.Error(err), zap.String("addr", addr))
+	}
+	b.listener = l
+
+	L.Info("tcp listening at :", zap.String("addr", addr))
+	go b.Accept()
+}
+
+func (b *Broker) startWS() {
+	addr := net.JoinHostPort(b.conf.Broker.Host, b.conf.Broker.WsPort)
+	lis, err := net.Listen("tcp", addr)
+	if err != nil {
+		L.Fatal("Fatal error when listening websocket", zap.Error(err), zap.String("addr", addr))
+	}
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		if conn, ok := websocket.TryUpgrade(w, r); ok {
+			atomic.AddUint64(&uid, 1)
+			go b.process(conn, uid)
+		}
+	})
+
+	go http.Serve(lis, mux)
+	L.Info("websocket listening at :", zap.String("addr", addr))
 }

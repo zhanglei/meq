@@ -6,8 +6,8 @@ common:
 
 broker:
   host: localhost
-  port: 8908
-  
+  tcpport: 8908
+  wsport: 9008
 store:
   engine: fdb
   fdb: 
