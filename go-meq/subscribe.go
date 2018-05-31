@@ -4,7 +4,10 @@ import (
 	"errors"
 	"time"
 
+	"bytes"
+
 	"github.com/jadechat/meq/proto"
+	"github.com/jadechat/meq/proto/mqtt"
 )
 
 type MsgHandler func(*proto.PubMsg)
@@ -21,12 +24,17 @@ func (c *Connection) Subscribe(topic []byte, queue []byte, f MsgHandler) error {
 	sub.handler = f
 	c.subs[string(topic)] = sub
 
-	msg := proto.PackSub(topic, queue)
-	c.conn.SetWriteDeadline(time.Now().Add(MAX_WRITE_WAIT_TIME))
-	_, err = c.conn.Write(msg)
-	if err != nil {
-		return err
+	c.msgid++
+	mid := c.msgid
+	c.subid[mid] = [][]byte{topic}
+
+	t := bytes.Join([][]byte{topic, queue}, []byte{proto.TopicQueueSep})
+	submsg := mqtt.Subscribe{
+		MessageID:     c.msgid,
+		Subscriptions: []mqtt.TopicQOSTuple{mqtt.TopicQOSTuple{1, t}},
 	}
+
+	submsg.EncodeTo(c.conn)
 
 	// wait for subscribe ok,at max 5 seconds
 	n := 0

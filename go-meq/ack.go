@@ -2,9 +2,9 @@ package meq
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/jadechat/meq/proto"
+	"github.com/jadechat/meq/proto/mqtt"
 )
 
 func (c *Connection) AckCount(topic []byte, count int) error {
@@ -16,9 +16,14 @@ func (c *Connection) AckCount(topic []byte, count int) error {
 		return fmt.Errorf("ack count cant greater than proto.MAX_PULL_COUNT")
 	}
 
-	msg := proto.PackAckCount(topic, count)
-	c.conn.SetWriteDeadline(time.Now().Add(MAX_WRITE_WAIT_TIME))
-	c.conn.Write(msg)
+	msg := mqtt.Publish{
+		Header: &mqtt.StaticHeader{
+			QOS: 0,
+		},
+		Topic:   topic,
+		Payload: proto.PackAckCount(count),
+	}
+	msg.EncodeTo(c.conn)
 
 	return nil
 }

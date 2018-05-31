@@ -3,9 +3,9 @@ package meq
 import (
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/jadechat/meq/proto"
+	"github.com/jadechat/meq/proto/mqtt"
 )
 
 func (c *Connection) UnreadCount(topic []byte) int {
@@ -38,9 +38,14 @@ func (c *Connection) PullMsgs(topic []byte, count int, offset []byte) error {
 	}
 
 	// 拉取最新消息
-	msg := proto.PackPullMsg(topic, count, offset)
-	c.conn.SetWriteDeadline(time.Now().Add(MAX_WRITE_WAIT_TIME))
-	c.conn.Write(msg)
+	m := mqtt.Publish{
+		Header: &mqtt.StaticHeader{
+			QOS: 0,
+		},
+		Topic:   topic,
+		Payload: proto.PackPullMsg(count, offset),
+	}
+	m.EncodeTo(c.conn)
 
 	return nil
 }

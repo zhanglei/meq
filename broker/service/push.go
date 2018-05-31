@@ -2,9 +2,9 @@ package service
 
 import (
 	"net"
-	"time"
 
 	"github.com/jadechat/meq/proto"
+	"github.com/jadechat/meq/proto/mqtt"
 )
 
 type pushPacket struct {
@@ -60,8 +60,12 @@ func pushOnline(from uint64, bk *Broker, msgs []*proto.PubMsg, broadcast bool) {
 }
 
 func pushOne(conn net.Conn, m []*proto.PubMsg) error {
-	msg := proto.PackPubMsgs(m, proto.MSG_PUB)
-	conn.SetWriteDeadline(time.Now().Add(MAX_IDLE_TIME * time.Second))
-	_, err := conn.Write(msg)
+	msg := mqtt.Publish{
+		Header: &mqtt.StaticHeader{
+			QOS: 0,
+		},
+		Payload: proto.PackPubMsgs(m, proto.MSG_PUB),
+	}
+	_, err := msg.EncodeTo(conn)
 	return err
 }

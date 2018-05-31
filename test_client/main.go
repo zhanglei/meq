@@ -3,11 +3,9 @@ package main
 import (
 	"flag"
 	"fmt"
-	"net"
 	"time"
 
 	meq "github.com/jadechat/meq/go-meq"
-	"github.com/jadechat/meq/proto"
 )
 
 var topic = "/test/mp/1"
@@ -59,14 +57,6 @@ func connect() []*meq.Connection {
 	}
 
 	return conns
-}
-
-func ping(conn net.Conn) {
-	for {
-		msg := proto.PackPing()
-		conn.Write(msg)
-		time.Sleep(30 * time.Second)
-	}
 }
 
 type sess struct {

@@ -1,14 +1,14 @@
 package meq
 
 import (
-	"encoding/binary"
+	"bufio"
 	"errors"
 	"math/rand"
 	"net"
 	"time"
 
-	"github.com/chaingod/talent"
 	"github.com/jadechat/meq/proto"
+	"github.com/jadechat/meq/proto/mqtt"
 	"go.uber.org/zap"
 )
 
@@ -17,13 +17,16 @@ type ConfigOption struct {
 }
 
 type Connection struct {
-	subs map[string]*sub
+	subs  map[string]*sub
+	subid map[uint16][][]byte
 
 	conn   net.Conn
 	close  chan struct{}
 	closed bool
 
 	ackch chan proto.Ack
+
+	msgid uint16
 
 	logger *zap.Logger
 }
@@ -48,7 +51,7 @@ func Connect(conf *ConfigOption) (*Connection, error) {
 	}
 
 	c.subs = make(map[string]*sub)
-
+	c.subid = make(map[uint16][][]byte)
 	host := conf.Hosts[rand.Intn(len(conf.Hosts))]
 	conn, err := net.Dial("tcp", host)
 	if err != nil {
@@ -57,28 +60,31 @@ func Connect(conf *ConfigOption) (*Connection, error) {
 	}
 
 	// connect to server
-	msg := proto.PackConnect()
-	conn.Write(msg)
-
-	// wait for connect ack sent from server
-	_, err = talent.ReadFull(conn, msg, 0)
-	if err != nil {
-		c.logger.Debug("read from server error", zap.String("host", host), zap.Error(err))
-		conn.Close()
+	ack := mqtt.Connect{}
+	if _, err := ack.EncodeTo(conn); err != nil {
 		return nil, err
 	}
-	if msg[4] != proto.MSG_CONNECT_OK {
-		conn.Close()
-		return nil, errors.New("first packet receved from server is not connect ack")
+
+	// wait for connect ack sent from server
+	reader := bufio.NewReaderSize(conn, 65536)
+	conn.SetDeadline(time.Now().Add(time.Second * proto.MAX_IDLE_TIME))
+
+	msg, err := mqtt.DecodePacket(reader)
+	if err != nil {
+		return nil, err
 	}
 
-	c.conn = conn
+	if msg.Type() == mqtt.TypeOfConnack {
+		c.conn = conn
 
-	go c.ping()
-	go c.writeLoop()
-	go c.loop(conf)
+		go c.ping()
+		go c.writeLoop()
+		go c.loop(conf)
 
-	return c, nil
+		return c, nil
+	}
+
+	return nil, errors.New("connecting to sever failed")
 }
 
 func (c *Connection) loop(conf *ConfigOption) {
@@ -93,18 +99,23 @@ func (c *Connection) loop(conf *ConfigOption) {
 		}
 
 		// connect to server
-		msg := proto.PackConnect()
-		conn.Write(msg)
-
-		// wait for connect ack sent from server
-		_, err = talent.ReadFull(conn, msg, 0)
-		if err != nil {
-			c.logger.Debug("read from server error", zap.String("host", host), zap.Error(err))
-			conn.Close()
+		ack := mqtt.Connect{}
+		if _, err := ack.EncodeTo(conn); err != nil {
 			time.Sleep(1000 * time.Millisecond)
 			continue
 		}
-		if msg[4] != proto.MSG_CONNECT_OK {
+
+		// wait for connect ack sent from server
+		reader := bufio.NewReaderSize(conn, 65536)
+		conn.SetDeadline(time.Now().Add(time.Second * proto.MAX_IDLE_TIME))
+
+		msg, err := mqtt.DecodePacket(reader)
+		if err != nil {
+			time.Sleep(1000 * time.Millisecond)
+			continue
+		}
+
+		if msg.Type() != mqtt.TypeOfConnack {
 			conn.Close()
 			time.Sleep(1000 * time.Millisecond)
 			continue
@@ -133,37 +144,47 @@ func (c *Connection) readLoop() error {
 	defer func() {
 		c.conn.Close()
 	}()
+
+	reader := bufio.NewReaderSize(c.conn, 65536)
 	for {
-		header := make([]byte, 4)
-		_, err := talent.ReadFull(c.conn, header, MAX_CONNECTION_IDLE_TIME)
+		c.conn.SetDeadline(time.Now().Add(time.Second * MAX_CONNECTION_IDLE_TIME))
+
+		msg, err := mqtt.DecodePacket(reader)
 		if err != nil {
 			return err
 		}
 
-		hl, _ := binary.Uvarint(header)
-		if hl <= 0 {
-			return errors.New("read packet header error")
-		}
-		msg := make([]byte, hl)
-		talent.ReadFull(c.conn, msg, MAX_CONNECTION_IDLE_TIME)
+		switch msg.Type() {
+		case mqtt.TypeOfPublish:
+			m := msg.(*mqtt.Publish)
+			pl := m.Payload
+			if len(pl) > 0 {
+				switch pl[0] {
+				case proto.MSG_COUNT:
+					count := proto.UnpackMsgCount(pl[1:])
+					c.subs[string(m.Topic)].unread = count
+				case proto.MSG_PUB:
+					msgs, _ := proto.UnpackPubMsgs(pl[1:])
+					for _, m := range msgs {
+						hc := c.subs[string(m.Topic)].ch
+						hc <- m
+					}
+				}
+			}
 
-		switch msg[0] {
-		case proto.MSG_PONG:
-		case proto.MSG_SUBACK:
-			topic := proto.UnpackSubAck(msg[1:])
-			sub, ok := c.subs[string(topic)]
+		case mqtt.TypeOfSuback:
+			m := msg.(*mqtt.Suback)
+			topics, ok := c.subid[m.MessageID]
 			if ok {
-				sub.acked = true
+				for _, topic := range topics {
+					sub, ok := c.subs[string(topic)]
+					if ok {
+						sub.acked = true
+					}
+				}
 			}
-		case proto.MSG_PUB:
-			msgs, _ := proto.UnpackPubMsgs(msg[1:])
-			for _, m := range msgs {
-				hc := c.subs[string(m.Topic)].ch
-				hc <- m
-			}
-		case proto.MSG_COUNT:
-			topic, count := proto.UnpackMsgCount(msg[1:])
-			c.subs[string(topic)].unread = count
+		case mqtt.TypeOfPingresp:
+
 		}
 	}
 }
@@ -172,9 +193,8 @@ func (c *Connection) ping() {
 	for {
 		select {
 		case <-time.NewTicker(10 * time.Second).C:
-			msg := proto.PackPing()
-			c.conn.SetWriteDeadline(time.Now().Add(MAX_WRITE_WAIT_TIME))
-			c.conn.Write(msg)
+			m := mqtt.Pingreq{}
+			m.EncodeTo(c.conn)
 		case <-c.close:
 			return
 		}
@@ -188,23 +208,35 @@ func (c *Connection) writeLoop() {
 		case ack := <-c.ackch:
 			ackcache = append(ackcache, ack)
 			if len(ackcache) == proto.CacheFlushLen {
-				msg := proto.PackAck(ackcache, proto.MSG_PUBACK)
-				c.conn.SetWriteDeadline(time.Now().Add(MAX_WRITE_WAIT_TIME))
-				c.conn.Write(msg)
+				msg := mqtt.Publish{
+					Header: &mqtt.StaticHeader{
+						QOS: 0,
+					},
+					Payload: proto.PackAck(ackcache, proto.MSG_PUBACK),
+				}
+				msg.EncodeTo(c.conn)
 				ackcache = ackcache[:0]
 			}
 		case <-time.NewTicker(1 * time.Second).C:
 			if len(ackcache) > 0 {
-				msg := proto.PackAck(ackcache, proto.MSG_PUBACK)
-				c.conn.SetWriteDeadline(time.Now().Add(MAX_WRITE_WAIT_TIME))
-				c.conn.Write(msg)
+				msg := mqtt.Publish{
+					Header: &mqtt.StaticHeader{
+						QOS: 0,
+					},
+					Payload: proto.PackAck(ackcache, proto.MSG_PUBACK),
+				}
+				msg.EncodeTo(c.conn)
 				ackcache = ackcache[:0]
 			}
 		case <-c.close:
 			if len(ackcache) > 0 {
-				msg := proto.PackAck(ackcache, proto.MSG_PUBACK)
-				c.conn.SetWriteDeadline(time.Now().Add(MAX_WRITE_WAIT_TIME))
-				c.conn.Write(msg)
+				msg := mqtt.Publish{
+					Header: &mqtt.StaticHeader{
+						QOS: 0,
+					},
+					Payload: proto.PackAck(ackcache, proto.MSG_PUBACK),
+				}
+				msg.EncodeTo(c.conn)
 				ackcache = ackcache[:0]
 				return
 			}

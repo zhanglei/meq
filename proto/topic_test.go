@@ -38,3 +38,20 @@ func TestParseTopic(t *testing.T) {
 		assert.Equal(t, out[i], ids)
 	}
 }
+
+func TestGetTopicAndQueue(t *testing.T) {
+	t1 := []byte("/test/v")
+	r1, r2 := GetTopicAndQueue(t1)
+	assert.Equal(t, t1, r1)
+	assert.Equal(t, DEFAULT_QUEUE, r2)
+
+	t1 = []byte("/test/v?")
+	r1, r2 = GetTopicAndQueue(t1)
+	assert.Equal(t, t1, r1)
+	assert.Equal(t, DEFAULT_QUEUE, r2)
+
+	t1 = []byte("/test/v?aaa")
+	r1, r2 = GetTopicAndQueue(t1)
+	assert.Equal(t, []byte("/test/v"), r1)
+	assert.Equal(t, []byte("aaa"), r2)
+}

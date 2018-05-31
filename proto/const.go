@@ -36,12 +36,16 @@ const (
 )
 
 var (
-	DEFAULT_GROUP     = []byte("meq.io")
+	DEFAULT_QUEUE     = []byte("meq.io")
 	MSG_NEWEST_OFFSET = []byte("0")
+)
 
+const (
 	MAX_PULL_COUNT = 100
 
 	CacheFlushLen = 100
 
 	ACK_ALL_COUNT = -1
+
+	MAX_IDLE_TIME = 60
 )

@@ -51,13 +51,13 @@ func NewBroker(path string) *Broker {
 }
 
 func (b *Broker) Start() {
+	b.running = true
+	b.runningTime = time.Now()
+
 	// tcp listener
 	b.startTcp()
 	// websocket listenser
 	b.startWS()
-
-	b.running = true
-	b.runningTime = time.Now()
 
 	// init store
 	switch b.conf.Store.Engine {

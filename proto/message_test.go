@@ -23,7 +23,7 @@ var mockMsgs = []*PubMsg{
 
 func TestPubMsgsPackUnpack(t *testing.T) {
 	packed := PackPubMsgs(mockMsgs, MSG_PUB)
-	unpacked, err := UnpackPubMsgs(packed[5:])
+	unpacked, err := UnpackPubMsgs(packed[1:])
 
 	assert.NoError(t, err)
 	assert.Equal(t, mockMsgs, unpacked)
@@ -47,32 +47,27 @@ func TestAckPackUnpack(t *testing.T) {
 	}
 
 	packed := PackAck(acks, MSG_PUBACK)
-	unpacked := UnpackAck(packed[5:])
+	unpacked := UnpackAck(packed[1:])
 
-	t.Error(unpacked)
 	assert.Equal(t, acks, unpacked)
 }
 
 func TestMsgCountPackUnpack(t *testing.T) {
-	topic := []byte("test")
 	count := 10
 
-	packed := PackMsgCount(topic, count)
-	ntopic, ncount := UnpackMsgCount(packed[5:])
+	packed := PackMsgCount(count)
+	ncount := UnpackMsgCount(packed[1:])
 
-	assert.Equal(t, topic, ntopic)
 	assert.Equal(t, count, ncount)
 }
 
 func TestPullPackUnpack(t *testing.T) {
 	msgid := []byte("00001")
-	topic := []byte("test")
 	count := 10
 
-	packed := PackPullMsg(topic, count, msgid)
-	ntopic, ncount, nmsgid := UnPackPullMsg(packed[5:])
+	packed := PackPullMsg(count, msgid)
+	ncount, nmsgid := UnPackPullMsg(packed[1:])
 
-	assert.Equal(t, topic, ntopic)
 	assert.Equal(t, count, ncount)
 	assert.Equal(t, msgid, nmsgid)
 }
@@ -94,21 +89,18 @@ func TestSubAckPackUnpack(t *testing.T) {
 }
 
 func TestPackAckCount(t *testing.T) {
-	topic := []byte("test")
 	count := MAX_PULL_COUNT
 
-	packed := PackAckCount(topic, count)
-	utopic, ucount := UnpackAckCount(packed[5:])
+	packed := PackAckCount(count)
+	ucount := UnpackAckCount(packed[1:])
 
-	assert.Equal(t, topic, utopic)
 	assert.Equal(t, count, ucount)
 
 	count = -1
 
-	packed = PackAckCount(topic, count)
-	utopic, ucount = UnpackAckCount(packed[5:])
+	packed = PackAckCount(count)
+	ucount = UnpackAckCount(packed[1:])
 
-	assert.Equal(t, topic, utopic)
 	assert.Equal(t, count, ucount)
 }
 

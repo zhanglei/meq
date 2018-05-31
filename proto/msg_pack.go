@@ -70,7 +70,7 @@ func UnpackMsg(b []byte) (PubMsg, error) {
 
 func PackSub(topic []byte, group []byte) []byte {
 	if group == nil {
-		group = DEFAULT_GROUP
+		group = DEFAULT_QUEUE
 	}
 
 	tl := uint64(len(topic))
@@ -118,14 +118,6 @@ func UnpackSubAck(b []byte) []byte {
 }
 
 func PackAck(acks []Ack, cmd byte) []byte {
-	body := PackAckBody(acks, cmd)
-	msg := make([]byte, len(body)+4)
-	binary.PutUvarint(msg[:4], uint64(len(body)))
-	copy(msg[4:], body)
-	return msg
-}
-
-func PackAckBody(acks []Ack, cmd byte) []byte {
 	total := 1 + 4 + 4*len(acks)
 	for _, ack := range acks {
 		total += (len(ack.Msgid) + len(ack.Topic))
@@ -209,44 +201,29 @@ func PackConnectOK() []byte {
 	return msg
 }
 
-func PackMsgCount(topic []byte, count int) []byte {
-	msg := make([]byte, 4+1+2+len(topic)+4)
-	binary.PutUvarint(msg[:4], uint64(1+2+len(topic)+4))
-	msg[4] = MSG_COUNT
-	binary.PutUvarint(msg[5:7], uint64(len(topic)))
-	copy(msg[7:7+len(topic)], topic)
-	binary.PutUvarint(msg[7+len(topic):11+len(topic)], uint64(count))
+func PackMsgCount(count int) []byte {
+	msg := make([]byte, 1+4)
+	msg[0] = MSG_COUNT
+	binary.PutUvarint(msg[1:5], uint64(count))
 	return msg
 }
 
-func UnpackMsgCount(b []byte) ([]byte, int) {
-	tl, _ := binary.Uvarint(b[:2])
-	topic := b[2 : 2+tl]
-
-	count, _ := binary.Uvarint(b[2+tl : 6+tl])
-	return topic, int(count)
+func UnpackMsgCount(b []byte) int {
+	count, _ := binary.Uvarint(b)
+	return int(count)
 }
 
-func PackPullMsg(topic []byte, count int, msgid []byte) []byte {
-	tl := uint64(len(topic))
-	msg := make([]byte, 4+1+2+len(topic)+1+len(msgid))
-	binary.PutUvarint(msg[:4], uint64(1+2+len(topic)+1+len(msgid)))
-	msg[4] = MSG_PULL
-	binary.PutUvarint(msg[5:7], tl)
-	copy(msg[7:7+tl], topic)
-	binary.PutUvarint(msg[7+tl:8+tl], uint64(count))
-	copy(msg[8+tl:8+int(tl)+len(msgid)], msgid)
+func PackPullMsg(count int, msgid []byte) []byte {
+	msg := make([]byte, 1+1+len(msgid))
+	msg[0] = MSG_PULL
+	binary.PutUvarint(msg[1:2], uint64(count))
+	copy(msg[2:2+len(msgid)], msgid)
 	return msg
 }
 
-func UnPackPullMsg(b []byte) ([]byte, int, []byte) {
-	var tl uint64
-	if tl, _ = binary.Uvarint(b[0:2]); tl <= 0 {
-		return nil, 0, nil
-	}
-
-	count, _ := binary.Uvarint(b[2+tl : 3+tl])
-	return b[2 : 2+tl], int(count), b[3+tl:]
+func UnPackPullMsg(b []byte) (int, []byte) {
+	count, _ := binary.Uvarint(b[0:1])
+	return int(count), b[1:]
 }
 
 func PackTimerMsg(m *TimerMsg, cmd byte) []byte {
@@ -328,12 +305,11 @@ func PackPubMsgs(ms []*PubMsg, cmd byte) []byte {
 	cbody := snappy.Encode(nil, body)
 
 	//header
-	msg := make([]byte, len(cbody)+9)
-	binary.PutUvarint(msg[:4], uint64(len(cbody)+5))
-	msg[4] = cmd
-	binary.PutUvarint(msg[5:9], uint64(len(ms)))
+	msg := make([]byte, len(cbody)+5)
+	msg[0] = cmd
+	binary.PutUvarint(msg[1:5], uint64(len(ms)))
 
-	copy(msg[9:], cbody)
+	copy(msg[5:], cbody)
 	return msg
 }
 
@@ -379,24 +355,17 @@ func UnpackPubMsgs(m []byte) ([]*PubMsg, error) {
 	return msgs, nil
 }
 
-func PackAckCount(topic []byte, n int) []byte {
-	tl := uint64(len(topic))
-	m := make([]byte, 4+1+2+tl+2)
-	binary.PutUvarint(m[:4], 1+2+tl+2)
-	m[4] = MSG_PUBACK_COUNT
+func PackAckCount(n int) []byte {
+	m := make([]byte, 1+2)
+	m[0] = MSG_PUBACK_COUNT
 
-	binary.PutUvarint(m[5:7], tl)
-	copy(m[7:7+tl], topic)
-
-	binary.PutVarint(m[7+tl:9+tl], int64(n))
+	binary.PutVarint(m[1:3], int64(n))
 
 	return m
 }
 
-func UnpackAckCount(b []byte) ([]byte, int) {
-	tl, _ := binary.Uvarint(b[:2])
-	topic := b[2 : 2+tl]
-	count, _ := binary.Varint(b[2+tl : 4+tl])
+func UnpackAckCount(b []byte) int {
+	count, _ := binary.Varint(b)
 
-	return topic, int(count)
+	return int(count)
 }

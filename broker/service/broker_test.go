@@ -25,12 +25,5 @@ func TestClusterPubAndSub(t *testing.T) {
 }
 
 func testServer(bport string, chaddr string, cport string, cseed string, adminAddr string) {
-	b := NewBroker("../broker.yaml")
-	b.conf.Broker.Port = bport
-	b.conf.Cluster.HwAddr = chaddr
-	b.conf.Cluster.Port = cport
-	b.conf.Cluster.SeedPeers = []string{cseed}
-	b.conf.Admin.Addr = adminAddr
 
-	b.Start()
 }

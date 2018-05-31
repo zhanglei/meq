@@ -18,7 +18,7 @@ func sub(conn *meq.Connection) {
 		panic(err)
 	}
 
-	// 先拉取10条消息
+	// 先拉取x条消息
 	err = conn.PullMsgs([]byte(topic), proto.MAX_PULL_COUNT, proto.MSG_NEWEST_OFFSET)
 	if err != nil {
 		panic(err)

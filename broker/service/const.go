@@ -11,8 +11,6 @@ const (
 	// ACCEPT_MAX_SLEEP is the maximum acceptable sleep times on temporary errors
 	ACCEPT_MAX_SLEEP = 1 * time.Second
 
-	MAX_IDLE_TIME = 60
-
 	WRITE_DEADLINE = 2 * time.Second
 
 	MAX_MESSAGE_BATCH      = 200
