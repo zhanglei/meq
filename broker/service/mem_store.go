@@ -185,7 +185,7 @@ func (ms *MemStore) Flush() {
 	}
 }
 
-func (ms *MemStore) Get(t []byte, count int, offset []byte) []*proto.PubMsg {
+func (ms *MemStore) Get(t []byte, count int, offset []byte, acked bool) []*proto.PubMsg {
 	topic := string(t)
 
 	ms.Lock()

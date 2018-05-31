@@ -13,7 +13,7 @@ type Storage interface {
 	Put([]*proto.PubMsg)
 	ACK([]proto.Ack)
 
-	Get([]byte, int, []byte) []*proto.PubMsg
+	Get([]byte, int, []byte, bool) []*proto.PubMsg
 	GetCount([]byte) int
 
 	PutTimerMsg(*proto.TimerMsg)

@@ -20,7 +20,7 @@ func pub(conns []*meq.Connection) {
 			n := 1
 			cache := make([]*proto.PubMsg, 0, 10000)
 			for {
-				if n > 100 {
+				if n > 100000 {
 					break
 				}
 				// 27
@@ -31,7 +31,7 @@ func pub(conns []*meq.Connection) {
 					Type:    1,
 					QoS:     1,
 				}
-				if len(cache) < 10 {
+				if len(cache) < 50 {
 					cache = append(cache, m)
 				} else {
 					cache = append(cache, m)

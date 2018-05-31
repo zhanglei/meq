@@ -33,8 +33,8 @@ func (c *Connection) PullMsgs(topic []byte, count int, offset []byte) error {
 		return errors.New("messages count cant below 0")
 	}
 
-	if count > MAX_PULL_COUNT {
-		return fmt.Errorf("messages count cant larger than %d", MAX_PULL_COUNT)
+	if count > proto.MAX_PULL_COUNT {
+		return fmt.Errorf("messages count cant larger than %d", proto.MAX_PULL_COUNT)
 	}
 
 	// 拉取最新消息

@@ -88,7 +88,6 @@ func (c *client) readLoop() error {
 
 			// save the messages
 			c.bk.store.Put(ms)
-
 			// push to online clients in all nodes
 			pushOnline(c.cid, c.bk, ms, false)
 
@@ -166,7 +165,7 @@ func (c *client) readLoop() error {
 				return errors.New("pull messages without subscribe the topic:" + string(topic))
 			}
 
-			msgs := c.bk.store.Get(topic, count, offset)
+			msgs := c.bk.store.Get(topic, count, offset, true)
 			c.msgSender <- msgs
 		case proto.MSG_PUB_TIMER, proto.MSG_PUB_RESTORE:
 			m := proto.UnpackTimerMsg(buf[1:])

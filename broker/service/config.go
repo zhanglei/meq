@@ -20,8 +20,11 @@ type Config struct {
 	}
 
 	Store struct {
-		Engine    string
-		Namespace string
+		Engine string
+		FDB    struct {
+			Namespace string
+			Threads   int
+		}
 	}
 
 	Cluster struct {

@@ -31,8 +31,11 @@ func (ad *admin) clearStore(c echo.Context) error {
 		return c.String(http.StatusOK, "not fdb store engine,ignore")
 	}
 
-	_, err := f.db.Transact(func(tr fdb.Transaction) (ret interface{}, err error) {
-		tr.ClearRange(f.sp)
+	i := getcounts % uint64(f.bk.conf.Store.FDB.Threads)
+	d := f.dbs[i]
+
+	_, err := d.db.Transact(func(tr fdb.Transaction) (ret interface{}, err error) {
+		tr.ClearRange(d.sp)
 		return
 	})
 	if err != nil {

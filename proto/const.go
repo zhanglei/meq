@@ -36,4 +36,6 @@ const (
 var (
 	DEFAULT_GROUP     = []byte("meq.io")
 	MSG_NEWEST_OFFSET = []byte("0")
+
+	MAX_PULL_COUNT = 100
 )
