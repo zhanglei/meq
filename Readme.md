@@ -18,7 +18,7 @@ Design Goals
 - HA and Scale out
 - support Message Push 、IM、IoT scenario
 - Topic fuzzing match
-- Message trace by **Opentracing**
+- Message trace
 - Multi persistent engine supported
 - Ops friendly
  
