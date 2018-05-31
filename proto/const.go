@@ -38,4 +38,6 @@ var (
 	MSG_NEWEST_OFFSET = []byte("0")
 
 	MAX_PULL_COUNT = 100
+
+	CacheFlushLen = 100
 )

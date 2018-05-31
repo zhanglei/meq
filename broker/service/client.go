@@ -145,8 +145,10 @@ func (c *client) readLoop() error {
 
 		case proto.MSG_PUBACK: // clients receive the publish message
 			acks := proto.UnpackAck(buf[1:])
-			// ack the message
-			c.bk.store.ACK(acks)
+			if len(acks) > 0 {
+				// ack the messages
+				c.bk.store.ACK(acks)
+			}
 		case proto.MSG_PING: // receive client's 'ping', respond with 'pong'
 			msg := proto.PackPong()
 			c.conn.SetWriteDeadline(time.Now().Add(WRITE_DEADLINE))

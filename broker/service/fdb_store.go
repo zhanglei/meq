@@ -2,6 +2,7 @@ package service
 
 import (
 	"bytes"
+	"encoding/binary"
 	"sync"
 	"time"
 
@@ -28,8 +29,7 @@ type database struct {
 }
 
 const (
-	FdbCacheInitLen  = 1000
-	FdbCacheFlushLen = 100
+	FdbCacheInitLen = 1000
 )
 
 func (f *FdbStore) Init() {
@@ -69,14 +69,14 @@ func (f *FdbStore) process(i int) {
 		select {
 		case msgs := <-pubch:
 			msgcache = append(msgcache, msgs...)
-			if len(msgcache) >= FdbCacheFlushLen {
+			if len(msgcache) >= proto.CacheFlushLen {
 				put(db, sp, msgcache)
 				msgcache = msgcache[:0]
 			}
 		case acks := <-ackch:
 			ackcache = append(ackcache, acks...)
-			if len(ackcache) >= FdbCacheFlushLen {
-				//@todo ack flush
+			if len(ackcache) >= proto.CacheFlushLen {
+				ack(db, sp, ackcache)
 				ackcache = ackcache[:0]
 			}
 		case <-time.NewTicker(1 * time.Second).C:
@@ -86,7 +86,7 @@ func (f *FdbStore) process(i int) {
 			}
 
 			if len(ackcache) > 0 {
-				// f.pub(msgcache)
+				ack(db, sp, ackcache)
 				ackcache = ackcache[:0]
 			}
 
@@ -118,8 +118,36 @@ func put(db fdb.Database, sp subspace.Subspace, msgs []*proto.PubMsg) {
 	}
 }
 
-func (f *FdbStore) ACK([]proto.Ack) {
+var ackcounts uint64 = 0
 
+func (f *FdbStore) ACK(acks []proto.Ack) {
+	// for lock free solution
+	i := putcounts % uint64(f.bk.conf.Store.FDB.Threads)
+	f.ackchs[i] <- acks
+
+	putcounts++
+}
+
+func ack(db fdb.Database, sp subspace.Subspace, acks []proto.Ack) {
+	_, err := db.Transact(func(tr fdb.Transaction) (ret interface{}, err error) {
+		for _, ack := range acks {
+			key := sp.Pack(tuple.Tuple{ack.Topic, ack.Msgid})
+			b := tr.Get(key).MustGet()
+			// update msg acked to true(1)
+			// msgid
+			ml, _ := binary.Uvarint(b[:2])
+			// payload
+			pl, _ := binary.Uvarint(b[2+ml : 6+ml])
+			// update ack
+			b[6+ml+pl] = '1'
+
+			tr.Set(key, b)
+		}
+		return
+	})
+	if err != nil {
+		L.Info("put messsage error", zap.Error(err))
+	}
 }
 
 var (

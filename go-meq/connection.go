@@ -182,28 +182,32 @@ func (c *Connection) ping() {
 }
 
 func (c *Connection) writeLoop() {
-	ackcache := make([]proto.Ack, 0, 10000)
+	ackcache := make([]proto.Ack, 0, 1000)
 	for {
 		select {
 		case ack := <-c.ackch:
 			ackcache = append(ackcache, ack)
-			if len(ackcache) == 10000 {
+			if len(ackcache) == proto.CacheFlushLen {
 				msg := proto.PackAck(ackcache, proto.MSG_PUBACK)
 				c.conn.SetWriteDeadline(time.Now().Add(MAX_WRITE_WAIT_TIME))
 				c.conn.Write(msg)
 				ackcache = ackcache[:0]
 			}
 		case <-time.NewTicker(1 * time.Second).C:
-			msg := proto.PackAck(ackcache, proto.MSG_PUBACK)
-			c.conn.SetWriteDeadline(time.Now().Add(MAX_WRITE_WAIT_TIME))
-			c.conn.Write(msg)
-			ackcache = ackcache[:0]
+			if len(ackcache) > 0 {
+				msg := proto.PackAck(ackcache, proto.MSG_PUBACK)
+				c.conn.SetWriteDeadline(time.Now().Add(MAX_WRITE_WAIT_TIME))
+				c.conn.Write(msg)
+				ackcache = ackcache[:0]
+			}
 		case <-c.close:
-			msg := proto.PackAck(ackcache, proto.MSG_PUBACK)
-			c.conn.SetWriteDeadline(time.Now().Add(MAX_WRITE_WAIT_TIME))
-			c.conn.Write(msg)
-			ackcache = ackcache[:0]
-			return
+			if len(ackcache) > 0 {
+				msg := proto.PackAck(ackcache, proto.MSG_PUBACK)
+				c.conn.SetWriteDeadline(time.Now().Add(MAX_WRITE_WAIT_TIME))
+				c.conn.Write(msg)
+				ackcache = ackcache[:0]
+				return
+			}
 		}
 	}
 }
