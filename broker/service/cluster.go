@@ -96,7 +96,7 @@ func (c *cluster) Init() {
 
 	// loop to get the running time of other nodes
 	go func() {
-		submsg := SubMessage{CLUSTER_RUNNING_TIME_REQ, nil, nil, 0}
+		submsg := SubMessage{CLUSTER_RUNNING_TIME_REQ, nil, 0}
 
 		syncmsg := make([]byte, 5)
 		syncmsg[4] = CLUSTER_SUBS_SYNC_REQ
@@ -192,11 +192,9 @@ func (p *peer) OnGossipBroadcast(src mesh.PeerName, buf []byte) (received mesh.G
 
 	switch msg.TP {
 	case CLUSTER_SUB:
-		fmt.Println("recv sub:", string(msg.Topic), string(msg.Group), msg.Cid)
-		p.bk.subtrie.Subscribe(msg.Topic, msg.Group, msg.Cid, src)
+		p.bk.subtrie.Subscribe(msg.Topic, msg.Cid, src)
 	case CLUSTER_UNSUB:
-		fmt.Println("recv unsub:", string(msg.Topic), string(msg.Group), msg.Cid)
-		p.bk.subtrie.UnSubscribe(msg.Topic, msg.Group, msg.Cid, src)
+		p.bk.subtrie.UnSubscribe(msg.Topic, msg.Cid, src)
 	case CLUSTER_RUNNING_TIME_REQ:
 		t := make([]byte, 13)
 		t[4] = CLUSTER_RUNNING_TIME_RESP

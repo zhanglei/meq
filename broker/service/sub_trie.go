@@ -16,7 +16,7 @@ import (
 type Node struct {
 	ID       uint32
 	Topic    []byte
-	Subs     []*SubGroup
+	Subs     []Sub
 	Children map[uint32]*Node
 }
 
@@ -24,18 +24,14 @@ type SubTrie struct {
 	Roots map[uint32]*Node
 }
 
-type SubGroup struct {
-	ID     []byte
-	Sesses []Sess
-}
-type Sess struct {
+type Sub struct {
 	Addr mesh.PeerName
 	Cid  uint64
 }
 
-type TopicSess struct {
+type TopicSub struct {
 	Topic []byte
-	Sess  Sess
+	Sub   Sub
 }
 
 const subCacheLen = 1000
@@ -53,7 +49,7 @@ func NewSubTrie() *SubTrie {
 	}
 }
 
-func (st *SubTrie) Subscribe(topic []byte, queue []byte, cid uint64, addr mesh.PeerName) error {
+func (st *SubTrie) Subscribe(topic []byte, cid uint64, addr mesh.PeerName) error {
 	tids, err := proto.ParseTopic(topic, true)
 	if err != nil {
 		return err
@@ -69,7 +65,6 @@ func (st *SubTrie) Subscribe(topic []byte, queue []byte, cid uint64, addr mesh.P
 		root = &Node{
 			ID:       rootid,
 			Children: make(map[uint32]*Node),
-			// Subs:     make(map[string][]*SubGroup),
 		}
 		sublock.Lock()
 		st.Roots[rootid] = root
@@ -85,7 +80,6 @@ func (st *SubTrie) Subscribe(topic []byte, queue []byte, cid uint64, addr mesh.P
 			child = &Node{
 				ID:       tid,
 				Children: make(map[uint32]*Node),
-				// Subs:     make(map[string][]*SubGroup),
 			}
 			sublock.Lock()
 			curr.Children[tid] = child
@@ -96,48 +90,16 @@ func (st *SubTrie) Subscribe(topic []byte, queue []byte, cid uint64, addr mesh.P
 		// if encounters the last node in the tree branch, we should add topic to the subs of this node
 		if tid == last {
 			curr.Topic = topic
-			if !ok {
-				// []group
-				g := &SubGroup{
-					ID: queue,
-					Sesses: []Sess{
-						Sess{
-							Addr: addr,
-							Cid:  cid,
-						},
-					},
-				}
-				curr.Subs = []*SubGroup{g}
-			} else {
-				for _, g := range curr.Subs {
-					// group already exist,add to group
-					if bytes.Compare(g.ID, queue) == 0 {
-						g.Sesses = append(g.Sesses, Sess{
-							Addr: addr,
-							Cid:  cid,
-						})
-						return nil
-					}
-				}
-				// create group
-				g := &SubGroup{
-					ID: queue,
-					Sesses: []Sess{
-						Sess{
-							Addr: addr,
-							Cid:  cid,
-						},
-					},
-				}
-				curr.Subs = append(curr.Subs, g)
-			}
+			sublock.Lock()
+			curr.Subs = append(curr.Subs, Sub{addr, cid})
+			sublock.Unlock()
 		}
 	}
 
 	return nil
 }
 
-func (st *SubTrie) UnSubscribe(topic []byte, group []byte, cid uint64, addr mesh.PeerName) error {
+func (st *SubTrie) UnSubscribe(topic []byte, cid uint64, addr mesh.PeerName) error {
 	tids, err := proto.ParseTopic(topic, true)
 	if err != nil {
 		return err
@@ -165,22 +127,14 @@ func (st *SubTrie) UnSubscribe(topic []byte, group []byte, cid uint64, addr mesh
 		curr = child
 		// if encounters the last node in the tree branch, we should remove topic in this node
 		if tid == last {
-			for j, g := range curr.Subs {
-				if bytes.Compare(g.ID, group) == 0 {
-					// group exist
-					for i, c := range g.Sesses {
-						if c.Cid == cid && addr == c.Addr {
-							// delete sess
-							g.Sesses = append(g.Sesses[:i], g.Sesses[i+1:]...)
-							if len(g.Sesses) == 0 {
-								//delete group
-								curr.Subs = append(curr.Subs[:j], curr.Subs[j+1:]...)
-							}
-							break
-						}
-					}
+			sublock.Lock()
+			for i, sub := range curr.Subs {
+				if sub.Cid == cid && sub.Addr == addr {
+					curr.Subs = append(curr.Subs[:i], curr.Subs[i+1:]...)
+					break
 				}
 			}
+			sublock.Unlock()
 		}
 	}
 
@@ -189,7 +143,7 @@ func (st *SubTrie) UnSubscribe(topic []byte, group []byte, cid uint64, addr mesh
 
 //@todo
 // add query cache for heavy lookup
-func (st *SubTrie) Lookup(topic []byte) ([]TopicSess, error) {
+func (st *SubTrie) Lookup(topic []byte) ([]TopicSub, error) {
 	t := string(topic)
 
 	tids, err := proto.ParseTopic(topic, false)
@@ -197,14 +151,14 @@ func (st *SubTrie) Lookup(topic []byte) ([]TopicSess, error) {
 		return nil, err
 	}
 
-	var sesses []TopicSess
+	var subs []TopicSub
 	sublock.RLock()
 	cl, ok := subCache[t]
 	sublock.RUnlock()
 	if ok {
-		sesses = make([]TopicSess, 0, cl+100)
+		subs = make([]TopicSub, 0, cl+100)
 	} else {
-		sesses = make([]TopicSess, 0, 10)
+		subs = make([]TopicSub, 0, 10)
 	}
 
 	rootid := tids[0]
@@ -232,27 +186,26 @@ func (st *SubTrie) Lookup(topic []byte) ([]TopicSess, error) {
 
 	sublock.RLock()
 	for _, last := range lastNodes {
-		st.findSesses(last, &sesses)
+		st.findSubs(last, &subs)
 	}
 	sublock.RUnlock()
 
 	//@todo
 	//Remove duplicate elements from the list.
-	if len(sesses) >= subCacheLen {
+	if len(subs) >= subCacheLen {
 		sublock.Lock()
-		subCache[string(topic)] = len(sesses)
+		subCache[string(topic)] = len(subs)
 		sublock.Unlock()
 	}
-	return sesses, nil
+	return subs, nil
 }
 
-func (st *SubTrie) LookupExactly(topic []byte) ([]TopicSess, error) {
+func (st *SubTrie) LookupExactly(topic []byte) ([]TopicSub, error) {
 	tids, err := proto.ParseTopic(topic, true)
 	if err != nil {
 		return nil, err
 	}
 
-	var sesses []TopicSess
 	rootid := tids[0]
 
 	sublock.RLock()
@@ -276,37 +229,45 @@ func (st *SubTrie) LookupExactly(topic []byte) ([]TopicSess, error) {
 		lastNode = node
 	}
 
-	for _, g := range lastNode.Subs {
-		s := g.Sesses[rand.Intn(len(g.Sesses))]
-		sesses = append(sesses, TopicSess{lastNode.Topic, s})
+	if len(lastNode.Subs) == 0 {
+		return nil, nil
 	}
 
-	return sesses, nil
+	var sub Sub
+	// optimize the random performance
+	if len(lastNode.Subs) == 1 {
+		sub = lastNode.Subs[0]
+	} else {
+		sub = lastNode.Subs[rand.Intn(len(lastNode.Subs))]
+	}
+
+	return []TopicSub{TopicSub{lastNode.Topic, sub}}, nil
 }
 
-func (st *SubTrie) findSesses(n *Node, sesses *[]TopicSess) {
-	//@performance 50% time used here
-	for _, g := range n.Subs {
-		//@performance 随机数消耗30毫秒
-		var s Sess
-		if len(g.Sesses) == 1 {
-			s = g.Sesses[0]
+func (st *SubTrie) findSubs(n *Node, subs *[]TopicSub) {
+	// manually realloc the slice
+	if cap(*subs) == len(*subs) {
+		temp := make([]TopicSub, len(*subs), cap(*subs)*6)
+		copy(temp, *subs)
+		*subs = temp
+	}
+
+	if len(n.Subs) > 0 {
+		var sub Sub
+		// optimize the random performance
+		if len(n.Subs) == 1 {
+			sub = n.Subs[0]
 		} else {
-			s = g.Sesses[rand.Intn(len(g.Sesses))]
+			sub = n.Subs[rand.Intn(len(n.Subs))]
 		}
-		if cap(*sesses) == len(*sesses) {
-			temp := make([]TopicSess, len(*sesses), cap(*sesses)*6)
-			copy(temp, *sesses)
-			*sesses = temp
-		}
-		*sesses = append(*sesses, TopicSess{n.Topic, s})
+		*subs = append(*subs, TopicSub{n.Topic, sub})
 	}
 
 	if len(n.Children) == 0 {
 		return
 	}
 	for _, child := range n.Children {
-		st.findSesses(child, sesses)
+		st.findSubs(child, subs)
 	}
 }
 
@@ -364,7 +325,6 @@ func (st *SubTrie) Merge(osubs mesh.GossipData) (complete mesh.GossipData) {
 type SubMessage struct {
 	TP    int
 	Topic []byte
-	Group []byte
 	Cid   uint64
 }
 

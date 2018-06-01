@@ -20,7 +20,7 @@ func pushOnline(from uint64, bk *Broker, msgs []*proto.PubMsg, broadcast bool) {
 	}
 
 	for t, msgs := range topics {
-		var sesses []TopicSess
+		var sesses []TopicSub
 		var err error
 		if broadcast {
 			sesses, err = bk.subtrie.Lookup([]byte(t))
@@ -38,22 +38,22 @@ func pushOnline(from uint64, bk *Broker, msgs []*proto.PubMsg, broadcast bool) {
 				}
 			}
 
-			if sess.Sess.Addr == bk.cluster.peer.name {
-				if sess.Sess.Cid == from {
+			if sess.Sub.Addr == bk.cluster.peer.name {
+				if sess.Sub.Cid == from {
 					continue
 				}
 				bk.RLock()
-				c, ok := bk.clients[sess.Sess.Cid]
+				c, ok := bk.clients[sess.Sub.Cid]
 				bk.RUnlock()
 				if !ok {
 					bk.Lock()
-					delete(bk.clients, sess.Sess.Cid)
+					delete(bk.clients, sess.Sub.Cid)
 					bk.Unlock()
 				} else {
 					c.msgSender <- msgs
 				}
 			} else {
-				bk.router.route(sess.Sess, msgs)
+				bk.router.route(sess.Sub, msgs)
 			}
 		}
 	}

@@ -1,6 +1,7 @@
 package service
 
 import (
+	"bytes"
 	"fmt"
 
 	"github.com/jadechat/meq/proto"
@@ -43,15 +44,29 @@ func populateSubs(st *SubTrie) {
 				for l := 1; l <= 1000; l++ {
 					n++
 					topic := []byte(fmt.Sprintf("/test/g1/%d/b1/%d/%d/%d", i, j, k, l))
-					queue := []byte("test1")
 					addr := 1
 					if i%2 == 0 {
-						queue = []byte("test2")
 						addr = 2
 					}
-					st.Subscribe(topic, queue, uint64(n), mesh.PeerName(addr))
+					st.Subscribe(topic, uint64(n), mesh.PeerName(addr))
 				}
 			}
 		}
 	}
+}
+
+type topicSubs []TopicSub
+
+func (a topicSubs) Len() int { // 重写 Len() 方法
+	return len(a)
+}
+func (a topicSubs) Swap(i, j int) { // 重写 Swap() 方法
+	a[i], a[j] = a[j], a[i]
+}
+func (a topicSubs) Less(i, j int) bool { // 重写 Less() 方法， 从大到小排序
+	n := bytes.Compare(a[i].Topic, a[j].Topic)
+	if n >= 0 {
+		return true
+	}
+	return false
 }

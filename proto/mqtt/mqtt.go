@@ -429,6 +429,7 @@ func (s *Suback) EncodeTo(w io.Writer) (int, error) {
 	}
 
 	// Write to the underlying buffer
+
 	return w.Write(encodeParts(TypeOfSuback, buf, nil))
 }
 

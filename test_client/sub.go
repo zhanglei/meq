@@ -8,7 +8,7 @@ import (
 )
 
 func sub(conn *meq.Connection) {
-	err := conn.Subscribe([]byte(topic), []byte("robot1"), func(m *proto.PubMsg) {
+	err := conn.Subscribe([]byte(topic), func(m *proto.PubMsg) {
 		// if m.ID[len(m.ID)-1] == 48 && m.ID[len(m.ID)-2] == 48 && m.ID[len(m.ID)-3] == 48 && m.ID[len(m.ID)-4] == 48 {
 		fmt.Println("收到消息：", string(m.ID), m.QoS, m.Acked)
 		// }

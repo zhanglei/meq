@@ -85,17 +85,3 @@ func ParseTopic(t []byte, exactly bool) ([]uint32, error) {
 	}
 	return tids, nil
 }
-
-func GetTopicAndQueue(t []byte) ([]byte, []byte) {
-	if t[len(t)-1] == TopicQueueSep {
-		return t, DEFAULT_QUEUE
-	}
-
-	for i, b := range t {
-		if b == TopicQueueSep {
-			return t[:i], t[i+1:]
-		}
-	}
-
-	return t, DEFAULT_QUEUE
-}

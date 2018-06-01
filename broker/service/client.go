@@ -26,7 +26,7 @@ type client struct {
 	msgSender chan []*proto.PubMsg
 	ackSender chan []proto.Ack
 
-	subs map[string][]byte
+	subs map[string]struct{}
 
 	closed bool
 }
@@ -38,7 +38,7 @@ func initClient(cid uint64, conn net.Conn, bk *Broker) *client {
 		bk:        bk,
 		msgSender: make(chan []*proto.PubMsg, MAX_CHANNEL_LEN),
 		ackSender: make(chan []proto.Ack, MAX_CHANNEL_LEN),
-		subs:      make(map[string][]byte),
+		subs:      make(map[string]struct{}),
 	}
 }
 func (c *client) readLoop() error {
@@ -46,11 +46,11 @@ func (c *client) readLoop() error {
 	defer func() {
 		c.closed = true
 		// unsub topics
-		for topic, group := range c.subs {
-			c.bk.subtrie.UnSubscribe([]byte(topic), group, c.cid, c.bk.cluster.peer.name)
+		for topic := range c.subs {
+			c.bk.subtrie.UnSubscribe([]byte(topic), c.cid, c.bk.cluster.peer.name)
 			//@todo
 			// aync + batch
-			submsg := SubMessage{CLUSTER_UNSUB, []byte(topic), group, c.cid}
+			submsg := SubMessage{CLUSTER_UNSUB, []byte(topic), c.cid}
 			c.bk.cluster.peer.send.GossipBroadcast(submsg)
 		}
 		c.bk.wg.Done()
@@ -72,12 +72,12 @@ func (c *client) readLoop() error {
 		case mqtt.TypeOfSubscribe:
 			packet := msg.(*mqtt.Subscribe)
 			for _, sub := range packet.Subscriptions {
-				t, q := proto.GetTopicAndQueue(sub.Topic)
-				c.bk.subtrie.Subscribe(t, q, c.cid, c.bk.cluster.peer.name)
-				submsg := SubMessage{CLUSTER_SUB, t, q, c.cid}
+				t := sub.Topic
+				c.bk.subtrie.Subscribe(t, c.cid, c.bk.cluster.peer.name)
+				submsg := SubMessage{CLUSTER_SUB, t, c.cid}
 				c.bk.cluster.peer.send.GossipBroadcast(submsg)
 
-				c.subs[string(t)] = q
+				c.subs[string(t)] = struct{}{}
 				count := c.bk.store.GetCount(t)
 				// push out the count of the unread messages
 				msg := mqtt.Publish{
@@ -109,7 +109,6 @@ func (c *client) readLoop() error {
 				switch cmd {
 				case proto.MSG_PULL:
 					count, offset := proto.UnPackPullMsg(packet.Payload[1:])
-					fmt.Println(count, string(offset))
 					// pulling out the all messages is not allowed
 					if count > MAX_MESSAGE_PULL_COUNT || count <= 0 {
 						return fmt.Errorf("the pull count %d is larger than :%d or equal/smaller than 0", count, MAX_MESSAGE_PULL_COUNT)

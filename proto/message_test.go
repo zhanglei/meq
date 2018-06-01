@@ -31,13 +31,12 @@ func TestPubMsgsPackUnpack(t *testing.T) {
 
 func TestSubPackUnpack(t *testing.T) {
 	topic := []byte("test")
-	group := []byte("group")
 
-	packed := PackSub(topic, group)
-	ntopic, ngroup := UnpackSub(packed[5:])
+	packed := PackSub(topic)
+	ntopic := UnpackSub(packed[5:])
 
 	assert.Equal(t, topic, ntopic)
-	assert.Equal(t, group, ngroup)
+
 }
 
 func TestAckPackUnpack(t *testing.T) {

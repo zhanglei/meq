@@ -4,21 +4,18 @@ import (
 	"errors"
 	"time"
 
-	"bytes"
-
 	"github.com/jadechat/meq/proto"
 	"github.com/jadechat/meq/proto/mqtt"
 )
 
 type MsgHandler func(*proto.PubMsg)
 
-func (c *Connection) Subscribe(topic []byte, queue []byte, f MsgHandler) error {
+func (c *Connection) Subscribe(topic []byte, f MsgHandler) error {
 	_, err := proto.ParseTopic(topic, true)
 	if err != nil {
 		return err
 	}
 	sub := &sub{}
-	sub.queue = queue
 	hc := make(chan *proto.PubMsg, 10000)
 	sub.ch = hc
 	sub.handler = f
@@ -28,10 +25,9 @@ func (c *Connection) Subscribe(topic []byte, queue []byte, f MsgHandler) error {
 	mid := c.msgid
 	c.subid[mid] = [][]byte{topic}
 
-	t := bytes.Join([][]byte{topic, queue}, []byte{proto.TopicQueueSep})
 	submsg := mqtt.Subscribe{
 		MessageID:     c.msgid,
-		Subscriptions: []mqtt.TopicQOSTuple{mqtt.TopicQOSTuple{1, t}},
+		Subscriptions: []mqtt.TopicQOSTuple{mqtt.TopicQOSTuple{1, topic}},
 	}
 
 	submsg.EncodeTo(c.conn)

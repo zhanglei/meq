@@ -9,15 +9,15 @@ import (
 )
 
 var mockSubs = []SubData{
-	SubData{[]byte("/test/g1/a1/b1"), []byte("test1"), 1, mesh.PeerName(1)},
-	SubData{[]byte("/test/g2/a1/b1/c1"), []byte("test1"), 2, mesh.PeerName(2)},
-	SubData{[]byte("/test/g1/a1/b1/c1"), []byte("test2"), 3, mesh.PeerName(1)},
-	SubData{[]byte("/test/g2/a1/b1/c1"), []byte("test2"), 4, mesh.PeerName(2)},
-	SubData{[]byte("/test/g1/a1/b1/c1/d1/e1"), []byte("test1"), 5, mesh.PeerName(1)},
-	SubData{[]byte("/test/g1/a1/b1/c1/d1/e2"), []byte("test1"), 5, mesh.PeerName(2)},
-	SubData{[]byte("/test/g2/a1/b2/c1"), []byte("test2"), 6, mesh.PeerName(2)},
-	SubData{[]byte("/test/g1/a1/b2/c2"), []byte("test1"), 7, mesh.PeerName(2)},
-	SubData{[]byte("/test/g2/a2/b1/c1"), []byte("test1"), 8, mesh.PeerName(1)},
+	SubData{[]byte("/test/g1/a1/b1"), 1, mesh.PeerName(1)},
+	SubData{[]byte("/test/g2/a1/b1/c1"), 2, mesh.PeerName(2)},
+	SubData{[]byte("/test/g1/a1/b1/c1"), 3, mesh.PeerName(1)},
+	SubData{[]byte("/test/g2/a1/b1/c1"), 4, mesh.PeerName(2)},
+	SubData{[]byte("/test/g1/a1/b1/c1/d1/e1"), 5, mesh.PeerName(1)},
+	SubData{[]byte("/test/g1/a1/b1/c1/d1/e2"), 5, mesh.PeerName(2)},
+	SubData{[]byte("/test/g2/a1/b2/c1"), 6, mesh.PeerName(2)},
+	SubData{[]byte("/test/g1/a1/b2/c2"), 7, mesh.PeerName(2)},
+	SubData{[]byte("/test/g2/a2/b1/c1"), 8, mesh.PeerName(1)},
 }
 
 func TestRouteMsgPackUnpack(t *testing.T) {

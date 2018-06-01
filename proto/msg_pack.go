@@ -68,17 +68,12 @@ func UnpackMsg(b []byte) (PubMsg, error) {
 	return PubMsg{msgid, topic, payload, acked, int8(tp), int8(qos)}, nil
 }
 
-func PackSub(topic []byte, group []byte) []byte {
-	if group == nil {
-		group = DEFAULT_QUEUE
-	}
-
+func PackSub(topic []byte) []byte {
 	tl := uint64(len(topic))
-	gl := uint64(len(group))
 
-	msg := make([]byte, 4+1+2+tl+gl)
+	msg := make([]byte, 4+1+2+tl)
 	// 设置header
-	binary.PutUvarint(msg[:4], 1+2+tl+gl)
+	binary.PutUvarint(msg[:4], 1+2+tl)
 	// 设置control flag
 	msg[4] = MSG_SUB
 
@@ -86,20 +81,18 @@ func PackSub(topic []byte, group []byte) []byte {
 	binary.PutUvarint(msg[5:7], tl)
 	// topic
 	copy(msg[7:7+tl], topic)
-	// group
-	copy(msg[7+tl:], group)
 
 	return msg
 }
 
-func UnpackSub(b []byte) ([]byte, []byte) {
+func UnpackSub(b []byte) []byte {
 	// read topic length
 	var tl uint64
 	if tl, _ = binary.Uvarint(b[:2]); tl <= 0 {
-		return nil, nil
+		return nil
 	}
 
-	return b[2 : 2+tl], b[2+tl:]
+	return b[2 : 2+tl]
 }
 
 func PackSubAck(t []byte) []byte {

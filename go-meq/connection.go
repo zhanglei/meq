@@ -32,7 +32,6 @@ type Connection struct {
 }
 
 type sub struct {
-	queue   []byte
 	handler MsgHandler
 	unread  int
 	ch      chan *proto.PubMsg
@@ -126,7 +125,7 @@ func (c *Connection) loop(conf *ConfigOption) {
 		go func() {
 			// 重新订阅所有历史topic
 			for topic, sub := range c.subs {
-				c.Subscribe([]byte(topic), sub.queue, sub.handler)
+				c.Subscribe([]byte(topic), sub.handler)
 			}
 		}()
 	}

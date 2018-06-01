@@ -60,15 +60,21 @@ func connect() []*meq.Connection {
 }
 
 type sess struct {
-	a uint64
-	b uint64
+	a int
+	b int
 }
 
 func test() {
 	ts := time.Now()
-	s := make([]int, 0, 400000)
-	for i := 0; i < 400000; i++ {
-		s = append(s, i)
+	// 111微秒
+	// var s []sess
+	// for i := 0; i < 2000; i++ {
+	// 	s = append(s, sess{i, i})
+	// }
+
+	s := make(map[sess]struct{})
+	for i := 0; i < 2000; i++ {
+		s[sess{i, i}] = struct{}{}
 	}
-	fmt.Println(time.Now().Sub(ts).Nanoseconds())
+	fmt.Println(time.Now().Sub(ts).Nanoseconds() / 1e3)
 }

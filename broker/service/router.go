@@ -42,7 +42,8 @@ func (r *Router) recvRoute(src mesh.PeerName, buf []byte) {
 		c.msgSender <- msgs
 	}
 }
-func (r *Router) route(s Sess, ms []*proto.PubMsg) {
+
+func (r *Router) route(s Sub, ms []*proto.PubMsg) {
 	//@todo
 	// async + batch,current implementation will block the client's read loop
 	m := packRouteMsgs(ms, CLUSTER_MSG_ROUTE, s.Cid)
