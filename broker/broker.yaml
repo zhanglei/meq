@@ -8,18 +8,18 @@ broker:
   host: localhost
   tcpport: 8908
   wsport: 9008
+  httpport: 9108
+  token: "meq-test"
+
 store:
   engine: fdb
   fdb: 
     namespace: meq-store
     threads: 20
+  mem:
     
 cluster:
   hwaddr: "00:00:00:00:00:01"
   port: "8918"
   seedpeers: 
     - ""
-
-admin:
-  addr: "localhost:8928"
-  token: "meq-test"

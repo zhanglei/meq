@@ -32,13 +32,14 @@ func (c *Connection) Subscribe(topic []byte, f MsgHandler) error {
 
 	submsg.EncodeTo(c.conn)
 
-	// wait for subscribe ok,at max 5 seconds
+	// wait for subscribe ack,at max 10 seconds
 	n := 0
 	for !sub.acked {
 		if n > 10 {
 			return errors.New("subscribe failed")
 		}
 		time.Sleep(500 * time.Millisecond)
+		n++
 	}
 
 	go func() {

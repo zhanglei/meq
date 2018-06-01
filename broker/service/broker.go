@@ -13,6 +13,7 @@ import (
 
 	"github.com/chaingod/talent"
 	"github.com/jadechat/meq/proto/websocket"
+	"github.com/labstack/echo"
 	"go.uber.org/zap"
 )
 
@@ -58,6 +59,8 @@ func (b *Broker) Start() {
 	b.startTcp()
 	// websocket listenser
 	b.startWS()
+	// http listener
+	b.startHTTP()
 
 	// init store
 	switch b.conf.Store.Engine {
@@ -90,10 +93,6 @@ func (b *Broker) Start() {
 		bk: b,
 	}
 	b.timer.Init()
-
-	// init admin
-	ad := &admin{}
-	go ad.Init(b)
 
 	go func() {
 		log.Println(http.ListenAndServe("localhost:6070", nil))
@@ -205,4 +204,16 @@ func (b *Broker) startWS() {
 
 	go http.Serve(lis, mux)
 	L.Info("websocket listening at :", zap.String("addr", addr))
+}
+
+func (b *Broker) startHTTP() {
+	go func() {
+		e := echo.New()
+		e.POST("/clear/store", b.clearStore)
+
+		addr := net.JoinHostPort(b.conf.Broker.Host, b.conf.Broker.HttpPort)
+		e.Logger.Fatal(e.Start(addr))
+		L.Info("http listening at :", zap.String("addr", addr))
+	}()
+
 }

@@ -6,10 +6,26 @@ import (
 	"github.com/chaingod/talent"
 )
 
+/* A topic must be like these
+1. /APP_ID/SEND_TAG/a
+2. /APP_ID/SEND_TAG/a/+
+3. /APP_ID/SEND_TAG/a/+/b...
+APP_ID must have the length of AppIdLen, SEND_TAG must be TopicSendOne or TopicSendAll
+*/
+
+// DONT change these values!
 const (
 	TopicSep      = '/'
 	TopicWildcard = '+'
-	TopicQueueSep = '?'
+
+	TopicSendOne = '1'
+	TopicSendAll = '2'
+
+	AppIdLen = 10
+)
+
+var (
+	WildCardHash = talent.MurMurHash([]byte{TopicWildcard})
 )
 
 func ParseTopic(t []byte, exactly bool) ([]uint32, error) {
@@ -55,33 +71,70 @@ func ParseTopic(t []byte, exactly bool) ([]uint32, error) {
 		tids = append(tids, tid)
 	}
 
-	if len(tids) == 0 {
+	if len(tids) < 3 {
 		return nil, errors.New("topic invalid")
 	}
-	// first part of topic cant be wildcard
-	if tids[0] == talent.MurMurHash([]byte{TopicWildcard}) {
-		return nil, errors.New("first byte cant be wildcard")
+
+	// first three parts of topic cant be wildcard
+	if tids[0] == WildCardHash || tids[1] == WildCardHash || tids[2] == WildCardHash {
+		return nil, errors.New("first three parts cant be wildcard")
 	}
 
+	// a exactly topic cant contain wildcard char
 	if exactly {
-		if len(tids) < 3 {
-			return nil, errors.New("topic invalid")
-		}
 		// if the topic is for subscribe,every part of topic cant be wildcard
-		for _, tid := range tids[1:] {
-			if tid == talent.MurMurHash([]byte{TopicWildcard}) {
+		for _, tid := range tids[2:] {
+			if tid == WildCardHash {
 				return nil, errors.New("subscribe topic  cant contain wildcard")
 			}
 		}
+	}
 
-	} else {
-		if len(tids) < 1 {
-			return nil, errors.New("topic invalid")
+	return tids, nil
+}
+
+func AppidAndSendTag(topic []byte) ([]byte, byte, error) {
+	i2 := 0
+	i3 := 0
+
+	for i, b := range topic {
+		if i == 0 {
+			// first byte must be topic sep
+			if b != TopicSep {
+				return nil, 0, errors.New("topic invalid")
+			}
+			continue
 		}
-		// last part cant be wildcard
-		if tids[len(tids)-1] == talent.MurMurHash([]byte{TopicWildcard}) {
-			return nil, errors.New("last part cant be wildcart in publish mode")
+		if i != 0 && b == TopicSep && i2 == 0 {
+			i2 = i
+			continue
+		}
+		if b == TopicSep {
+			i3 = i
+			break
 		}
 	}
-	return tids, nil
+
+	// last byte cant be topic sep
+	if i3 == len(topic)-1 {
+		return nil, 0, errors.New("topic invalid")
+	}
+
+	// sendtag's length must be 1
+	if i3 != i2+2 {
+		return nil, 0, errors.New("topic invalid")
+	}
+
+	// appid's length must be AppIdLen
+	appid := topic[1:i2]
+	if len(appid) != AppIdLen {
+		return nil, 0, errors.New("topic invalid")
+	}
+
+	sendtag := topic[i2+1]
+	if sendtag != TopicSendOne && sendtag != TopicSendAll {
+		return nil, 0, errors.New("topic invalid")
+	}
+
+	return appid, sendtag, nil
 }

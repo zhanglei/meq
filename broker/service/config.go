@@ -15,16 +15,19 @@ type Config struct {
 		LogLevel string
 	}
 	Broker struct {
-		Host    string
-		TcpPort string
-		WsPort  string
+		Host     string
+		TcpPort  string
+		WsPort   string
+		HttpPort string
+		Token    string
 	}
-
 	Store struct {
 		Engine string
 		FDB    struct {
 			Namespace string
 			Threads   int
+		}
+		Mem struct {
 		}
 	}
 
@@ -32,11 +35,6 @@ type Config struct {
 		HwAddr    string
 		Port      string
 		SeedPeers []string
-	}
-
-	Admin struct {
-		Addr  string
-		Token string
 	}
 }
 

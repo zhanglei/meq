@@ -86,6 +86,8 @@ func Connect(conf *ConfigOption) (*Connection, error) {
 	return nil, errors.New("connecting to sever failed")
 }
 
+var subretries = 0
+
 func (c *Connection) loop(conf *ConfigOption) {
 	for !c.closed {
 		c.readLoop()
@@ -93,14 +95,14 @@ func (c *Connection) loop(conf *ConfigOption) {
 		conn, err := net.Dial("tcp", host)
 		if err != nil {
 			c.logger.Debug("dial to server error", zap.String("host", host), zap.Error(err))
-			time.Sleep(1000 * time.Millisecond)
+			time.Sleep(2000 * time.Millisecond)
 			continue
 		}
 
 		// connect to server
 		ack := mqtt.Connect{}
 		if _, err := ack.EncodeTo(conn); err != nil {
-			time.Sleep(1000 * time.Millisecond)
+			time.Sleep(2000 * time.Millisecond)
 			continue
 		}
 
@@ -110,19 +112,20 @@ func (c *Connection) loop(conf *ConfigOption) {
 
 		msg, err := mqtt.DecodePacket(reader)
 		if err != nil {
-			time.Sleep(1000 * time.Millisecond)
+			time.Sleep(2000 * time.Millisecond)
 			continue
 		}
 
 		if msg.Type() != mqtt.TypeOfConnack {
 			conn.Close()
-			time.Sleep(1000 * time.Millisecond)
+			time.Sleep(2000 * time.Millisecond)
 			continue
 		}
 
 		c.conn = conn
 
 		go func() {
+			time.Sleep(2000 * time.Millisecond)
 			// 重新订阅所有历史topic
 			for topic, sub := range c.subs {
 				c.Subscribe([]byte(topic), sub.handler)

@@ -7,8 +7,6 @@ import (
 	"math/rand"
 	"sync"
 
-	"github.com/chaingod/talent"
-
 	"github.com/jadechat/meq/proto"
 	"github.com/weaveworks/mesh"
 )
@@ -39,8 +37,7 @@ const subCacheLen = 1000
 var subCache = make(map[string]int)
 
 var (
-	wildcard = talent.MurMurHash([]byte{proto.TopicWildcard})
-	sublock  = &sync.RWMutex{}
+	sublock = &sync.RWMutex{}
 )
 
 func NewSubTrie() *SubTrie {
@@ -54,6 +51,12 @@ func (st *SubTrie) Subscribe(topic []byte, cid uint64, addr mesh.PeerName) error
 	if err != nil {
 		return err
 	}
+	_, _, err = proto.AppidAndSendTag(topic)
+	if err != nil {
+		return err
+	}
+	//@todo,validate appid
+
 	rootid := tids[0]
 	last := tids[len(tids)-1]
 
@@ -151,6 +154,12 @@ func (st *SubTrie) Lookup(topic []byte) ([]TopicSub, error) {
 		return nil, err
 	}
 
+	_, sendtag, err := proto.AppidAndSendTag(topic)
+	if err != nil {
+		return nil, err
+	}
+	//@todo validate the appid
+
 	var subs []TopicSub
 	sublock.RLock()
 	cl, ok := subCache[t]
@@ -182,11 +191,9 @@ func (st *SubTrie) Lookup(topic []byte) ([]TopicSub, error) {
 	}
 
 	// 找到lastNode的所有子节点
-	//@performance 这段代码耗时92毫秒
-
 	sublock.RLock()
 	for _, last := range lastNodes {
-		st.findSubs(last, &subs)
+		st.findSubs(last, &subs, sendtag)
 	}
 	sublock.RUnlock()
 
@@ -205,6 +212,11 @@ func (st *SubTrie) LookupExactly(topic []byte) ([]TopicSub, error) {
 	if err != nil {
 		return nil, err
 	}
+	_, sendtag, err := proto.AppidAndSendTag(topic)
+	if err != nil {
+		return nil, err
+	}
+	//@todo validate the appid
 
 	rootid := tids[0]
 
@@ -233,18 +245,24 @@ func (st *SubTrie) LookupExactly(topic []byte) ([]TopicSub, error) {
 		return nil, nil
 	}
 
-	var sub Sub
+	var subs []TopicSub
 	// optimize the random performance
-	if len(lastNode.Subs) == 1 {
-		sub = lastNode.Subs[0]
+	if sendtag == proto.TopicSendAll {
+		for _, sub := range lastNode.Subs {
+			subs = append(subs, TopicSub{lastNode.Topic, sub})
+		}
 	} else {
-		sub = lastNode.Subs[rand.Intn(len(lastNode.Subs))]
+		if len(lastNode.Subs) == 1 {
+			subs = append(subs, TopicSub{lastNode.Topic, lastNode.Subs[0]})
+		} else {
+			subs = append(subs, TopicSub{lastNode.Topic, lastNode.Subs[rand.Intn(len(lastNode.Subs))]})
+		}
 	}
 
-	return []TopicSub{TopicSub{lastNode.Topic, sub}}, nil
+	return subs, nil
 }
 
-func (st *SubTrie) findSubs(n *Node, subs *[]TopicSub) {
+func (st *SubTrie) findSubs(n *Node, subs *[]TopicSub, sendtag byte) {
 	// manually realloc the slice
 	if cap(*subs) == len(*subs) {
 		temp := make([]TopicSub, len(*subs), cap(*subs)*6)
@@ -253,21 +271,27 @@ func (st *SubTrie) findSubs(n *Node, subs *[]TopicSub) {
 	}
 
 	if len(n.Subs) > 0 {
-		var sub Sub
 		// optimize the random performance
-		if len(n.Subs) == 1 {
-			sub = n.Subs[0]
+		if sendtag == proto.TopicSendOne {
+			var sub Sub
+			if len(n.Subs) == 1 {
+				sub = n.Subs[0]
+			} else {
+				sub = n.Subs[rand.Intn(len(n.Subs))]
+			}
+			*subs = append(*subs, TopicSub{n.Topic, sub})
 		} else {
-			sub = n.Subs[rand.Intn(len(n.Subs))]
+			for _, sub := range n.Subs {
+				*subs = append(*subs, TopicSub{n.Topic, sub})
+			}
 		}
-		*subs = append(*subs, TopicSub{n.Topic, sub})
 	}
 
 	if len(n.Children) == 0 {
 		return
 	}
 	for _, child := range n.Children {
-		st.findSubs(child, subs)
+		st.findSubs(child, subs, sendtag)
 	}
 }
 
@@ -282,7 +306,7 @@ func (st *SubTrie) findLastNodes(n *Node, tids []uint32, nodes *[]*Node) {
 	}
 
 	tid := tids[0]
-	if tid != wildcard {
+	if tid != proto.WildCardHash {
 		node, ok := n.Children[tid]
 		if !ok {
 			return

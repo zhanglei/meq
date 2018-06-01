@@ -73,7 +73,10 @@ func (c *client) readLoop() error {
 			packet := msg.(*mqtt.Subscribe)
 			for _, sub := range packet.Subscriptions {
 				t := sub.Topic
-				c.bk.subtrie.Subscribe(t, c.cid, c.bk.cluster.peer.name)
+				err := c.bk.subtrie.Subscribe(t, c.cid, c.bk.cluster.peer.name)
+				if err != nil {
+					return err
+				}
 				submsg := SubMessage{CLUSTER_SUB, t, c.cid}
 				c.bk.cluster.peer.send.GossipBroadcast(submsg)
 

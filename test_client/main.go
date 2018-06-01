@@ -8,7 +8,7 @@ import (
 	meq "github.com/jadechat/meq/go-meq"
 )
 
-var topic = "/test/mp/1"
+var topic = "/0000000001/1/test/mp/1"
 var host = "localhost:"
 
 var op = flag.String("op", "", "")
