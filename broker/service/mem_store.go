@@ -9,7 +9,7 @@ import (
 
 	"github.com/weaveworks/mesh"
 
-	"github.com/jadechat/meq/proto"
+	"github.com/cosmos-gg/meq/proto"
 )
 
 type MemStore struct {

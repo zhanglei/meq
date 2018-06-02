@@ -12,7 +12,7 @@ import (
 	_ "net/http/pprof"
 
 	"github.com/chaingod/talent"
-	"github.com/jadechat/meq/proto/websocket"
+	"github.com/cosmos-gg/meq/proto/websocket"
 	"github.com/labstack/echo"
 	"go.uber.org/zap"
 )

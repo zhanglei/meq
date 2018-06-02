@@ -4,8 +4,8 @@ import (
 	"encoding/binary"
 	"sync"
 
+	"github.com/cosmos-gg/meq/proto"
 	"github.com/golang/snappy"
-	"github.com/jadechat/meq/proto"
 	"github.com/weaveworks/mesh"
 	"go.uber.org/zap"
 )

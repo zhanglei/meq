@@ -14,7 +14,7 @@
 
 package main
 
-import "github.com/jadechat/meq/broker/cmd"
+import "github.com/cosmos-gg/meq/broker/cmd"
 
 func main() {
 	cmd.Execute()

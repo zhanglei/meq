@@ -3,7 +3,7 @@ package service
 import (
 	"encoding/binary"
 
-	"github.com/jadechat/meq/proto"
+	"github.com/cosmos-gg/meq/proto"
 )
 
 type Storage interface {

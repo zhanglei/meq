@@ -14,7 +14,7 @@
 
 package main
 
-import "github.com/jadechat/meq/admin/cmd"
+import "github.com/cosmos-gg/meq/admin/cmd"
 
 func main() {
 	cmd.Execute()

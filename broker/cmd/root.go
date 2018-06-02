@@ -20,7 +20,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/jadechat/meq/broker/service"
+	"github.com/cosmos-gg/meq/broker/service"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )

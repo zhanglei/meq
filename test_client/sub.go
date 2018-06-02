@@ -3,8 +3,8 @@ package main
 import (
 	"fmt"
 
-	meq "github.com/jadechat/meq/go-meq"
-	"github.com/jadechat/meq/proto"
+	meq "github.com/cosmos-gg/meq/go-meq"
+	"github.com/cosmos-gg/meq/proto"
 )
 
 func sub(conn *meq.Connection) {

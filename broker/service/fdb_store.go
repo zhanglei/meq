@@ -10,7 +10,7 @@ import (
 	"github.com/apple/foundationdb/bindings/go/src/fdb/directory"
 	"github.com/apple/foundationdb/bindings/go/src/fdb/subspace"
 	"github.com/apple/foundationdb/bindings/go/src/fdb/tuple"
-	"github.com/jadechat/meq/proto"
+	"github.com/cosmos-gg/meq/proto"
 	"go.uber.org/zap"
 )
 

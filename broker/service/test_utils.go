@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"fmt"
 
-	"github.com/jadechat/meq/proto"
+	"github.com/cosmos-gg/meq/proto"
 	"github.com/weaveworks/mesh"
 )
 

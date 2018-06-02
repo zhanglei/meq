@@ -3,8 +3,8 @@ package service
 import (
 	"net"
 
-	"github.com/jadechat/meq/proto"
-	"github.com/jadechat/meq/proto/mqtt"
+	"github.com/cosmos-gg/meq/proto"
+	"github.com/cosmos-gg/meq/proto/mqtt"
 )
 
 type pushPacket struct {

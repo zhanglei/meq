@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	meq "github.com/jadechat/meq/go-meq"
+	meq "github.com/cosmos-gg/meq/go-meq"
 )
 
 var topic = "/0000000001/1/test/mp/1"

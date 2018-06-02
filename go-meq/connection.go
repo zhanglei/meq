@@ -7,8 +7,8 @@ import (
 	"net"
 	"time"
 
-	"github.com/jadechat/meq/proto"
-	"github.com/jadechat/meq/proto/mqtt"
+	"github.com/cosmos-gg/meq/proto"
+	"github.com/cosmos-gg/meq/proto/mqtt"
 	"go.uber.org/zap"
 )
 

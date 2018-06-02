@@ -3,8 +3,8 @@ package meq
 import (
 	"fmt"
 
-	"github.com/jadechat/meq/proto"
-	"github.com/jadechat/meq/proto/mqtt"
+	"github.com/cosmos-gg/meq/proto"
+	"github.com/cosmos-gg/meq/proto/mqtt"
 )
 
 func (c *Connection) AckCount(topic []byte, count int) error {
