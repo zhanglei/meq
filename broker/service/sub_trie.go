@@ -326,6 +326,7 @@ var _ mesh.GossipData = &SubTrie{}
 // Encode serializes our complete state to a slice of byte-slices.
 // In this simple example, we use a single gob-encoded
 // buffer: see https://golang.org/pkg/encoding/gob/
+// @todo compress the data
 func (st *SubTrie) Encode() [][]byte {
 	sublock.RLock()
 	defer sublock.RUnlock()

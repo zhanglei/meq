@@ -33,6 +33,8 @@ type Broker struct {
 	subtrie   *SubTrie
 	subSynced bool
 
+	topics *Topics
+
 	conf *Config
 	sync.RWMutex
 }
@@ -75,6 +77,9 @@ func (b *Broker) Start() {
 	}
 
 	b.store.Init()
+
+	b.topics = &Topics{}
+	b.topics.Init(b)
 
 	// init cluster
 	b.cluster = &cluster{

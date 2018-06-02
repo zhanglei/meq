@@ -83,6 +83,14 @@ func (c *cluster) Init() {
 		ms.register(g)
 	}
 
+	// start topics sync
+	// c.bk.topics.pn = name
+	// t, err := router.NewGossip("topics", c.bk.topics)
+	// if err != nil {
+	// 	L.Fatal("Could not create cluster gossip", zap.Error(err))
+	// }
+	// c.bk.topics.register(t)
+
 	go func() {
 		L.Debug("cluster starting", zap.String("listen_addr", meshListen))
 		router.Start()
@@ -171,7 +179,7 @@ func (p *peer) stop() {
 
 // Return a copy of our complete state.
 func (p *peer) Gossip() (complete mesh.GossipData) {
-	return p.bk.subtrie
+	return
 }
 
 // Merge the gossiped data represented by buf into our state.
@@ -227,8 +235,6 @@ func (p *peer) OnGossipUnicast(src mesh.PeerName, buf []byte) error {
 			return err
 		}
 		p.bk.subtrie = set
-
-		fmt.Printf("recv subs sync %v from %v,that node starts running at %v\n", p.bk.subtrie, src, time.Unix(int64(p.longestRunningTime), 0))
 		p.bk.subSynced = true
 
 	case CLUSTER_MSG_ROUTE:
