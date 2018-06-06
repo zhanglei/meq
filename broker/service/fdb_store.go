@@ -68,9 +68,16 @@ func (f *FdbStore) process(i int) {
 	msgcache := make([]*proto.PubMsg, 0, FdbCacheInitLen)
 	ackcache := make([]proto.Ack, 0, FdbCacheInitLen)
 
+	count := make(map[string]int)
+
+	c1 := time.NewTicker(1 * time.Second).C
+	c2 := time.NewTicker(2 * time.Second).C
 	for f.bk.running || len(pubch) > 0 {
 		select {
 		case msgs := <-pubch:
+			for _, m := range msgs {
+				count[string(m.Topic)]++
+			}
 			msgcache = append(msgcache, msgs...)
 			if len(msgcache) >= proto.CacheFlushLen {
 				put(f.dbs[i], msgcache)
@@ -82,7 +89,7 @@ func (f *FdbStore) process(i int) {
 				ack(f.dbs[i], ackcache)
 				ackcache = ackcache[:0]
 			}
-		case <-time.NewTicker(1 * time.Second).C:
+		case <-c1:
 			if len(msgcache) > 0 {
 				put(f.dbs[i], msgcache)
 				msgcache = msgcache[:0]
@@ -92,7 +99,22 @@ func (f *FdbStore) process(i int) {
 				ack(f.dbs[i], ackcache)
 				ackcache = ackcache[:0]
 			}
-
+		case <-c2:
+			if len(count) > 0 {
+				d := f.dbs[i]
+				_, err := d.db.Transact(func(tr fdb.Transaction) (ret interface{}, err error) {
+					for t, c := range count {
+						ck := d.countsp.Pack(tuple.Tuple{[]byte(t)})
+						incrCount(d.db, ck, c)
+					}
+					return
+				})
+				if err != nil {
+					L.Info("put messsage count error", zap.Error(err))
+					continue
+				}
+				count = make(map[string]int)
+			}
 		}
 	}
 }
